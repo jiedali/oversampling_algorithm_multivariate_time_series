@@ -35,21 +35,25 @@ from sklearn.cluster import KMeans
 # This is the top level function that calls all the sub functions
 ################
 
-def train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(X, n_clusters, n_epochs, epsilon, num_new_samples):
+def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_signal_overall):
 	"""
+	This function implement the latest EM algorithm where we initialize the clusters with GMM
+	Add perturbation to covariance matrix
 	:param X: minority data chunk in eigen-signal space, n_samples * n_features
 	:param n_clusters: number of gaussian modes
 	:param n_epochs: number of epochs to run for EM algorithm
 	:param epsilon: covariance matrix perturbation, typically set to 0.01
 	:param num_new_samples: desired number of new samples to generate
+
 	:return: clusters, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, total_new_samples_c1
 	clusters: list with each element a dictionary containing information for each cluster
 	total_new_samples_c0: EM generated new samples for cluster 0: n_samples * n_features
 	total_new_samples_c1: EM generated new samples for cluster 1: n_samples * n_features
 	"""
 
-	# New samples are generated after maximization step, before expectation step
-	clusters = initialize_clusters_with_gmm_results(X, n_clusters)
+	clusters, results = initialize_clusters_with_gmm_results(X, n_clusters)
+	# return the clustering membership
+	clustering_results = results
 	likelihoods = np.zeros((n_epochs,))
 	scores = np.zeros((X.shape[0], n_clusters))
 	history = []
@@ -75,7 +79,8 @@ def train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(X, n_cluste
 		# first get the target number of samples to be generated for each cluster
 		# new_samples_c0, new_samples_c1 = generate_new_samples(clusters)
 		if i != 0:
-			new_samples_c0, new_samples_c1 = generate_new_samples_regu_eigen(clusters, num_new_samples)
+			new_samples_c0, new_samples_c1 = generate_new_samples_regu_eigen(clusters, num_new_samples, results, X,
+			                                                                 train_n, eigen_signal_overall)
 
 			if i == 1:
 				total_new_samples_c0 = new_samples_c0
@@ -84,19 +89,9 @@ def train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(X, n_cluste
 				total_new_samples_c0 = np.vstack((total_new_samples_c0, new_samples_c0))
 				total_new_samples_c1 = np.vstack((total_new_samples_c1, new_samples_c1))
 
-		# finally combine new samples together with old one, to feed into expectation step
-
-		#         X = np.vstack((X,np.real(new_samples_c0),np.real(new_samples_c1)))
-		#         if i!=0:
-		#             print("Before sending total data chunk X and clusters to expectation_step, their size seems to
-		#             mismatch:")
-		#             print("Shape of X:")
-		#             print(X.shape)
-		#             print("Shape of clusters:")
-		#             print(clusters[0]['gamma_nk'].shape)
-		#             print(clusters[1]['gamma_nk'].shape)
 		#
 		expectation_step(X, clusters, epsilon)
+		#
 		maximization_step(X, clusters)
 
 		likelihood, sample_likelihoods = get_likelihood(X, clusters)
@@ -107,15 +102,13 @@ def train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(X, n_cluste
 	for i, cluster in enumerate(clusters):
 		scores[:, i] = np.log(cluster['gamma_nk']).reshape(-1)
 
-	return clusters, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, total_new_samples_c1
-
+	return clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, total_new_samples_c1
 
 #################
 # initialize clusters
 #################
 def initialize_clusters_with_gmm_results(X, n_clusters):
 	"""
-
 	:param X: p class data, shape is n_samples * n_features
 	:param n_clusters: number of Gaussian modes (typically set to 2, needs to be experimented with)
 	:return: clusters: list with each element being a dictionary containing information for that cluster (like mu, cov)
@@ -141,8 +134,11 @@ def initialize_clusters_with_gmm_results(X, n_clusters):
 			'mu_k': mu_k[i],
 			'cov_k': cov_mat[i]
 		})
+		# print("iteration %d, clusters length:%d" %(i,len(clusters)))
+		# print(clusters)
 
-	return clusters
+	print(clusters)
+	return clusters, results
 
 
 ### functions to draw samples from regulated eigen spectrum
@@ -198,14 +194,19 @@ def reg_eigen_spectrum(cov_pos):
 
 # baseline function to draw samples from multivariate gaussian
 def draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n):
-	# This function draws n_samples for one target_cluster
-	# for each cluster, you need to run this method once
+	"""
+	This function wraps up the entire process of drawing samples from a regulated eigen covariance structure
+	Step 1: convert input data p/n into eigen signal space
+	Step 2: compute the regulated eigen covariance matrix
+	Step 3: draw new samples from that regulate eigen matrix
+	Step 4: covert new samples back to original feature space (that is the same feature dimension as train_p/train_n)
+	Step 5: return the new samples in original feature space
 
-	# input
-	# n_samples: number of samples to draw
-	# mu: mean vector of the target cluster
-	# sigma: covariance matrix for that cluster
-
+	:param n_samples: number of samples to generate
+	:param train_p: minority data chunk of a specific cluster, in original feature space
+	:param train_n: majority data chunk of the entire data, in original feature space
+	:return:
+	"""
 	# first convert original data into eigen signal space
 	ts_neg_low_d, ts_pos_low_d, eigen_signal, w = to_eigen_signal_space_per_cluster(train_p, train_n)
 	# compute positive class covariance matrix
@@ -214,13 +215,19 @@ def draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n):
 	v_pos, regu_eigen_values, M = reg_eigen_spectrum(cov_pos)
 	# draw samples
 	for i in range(0, n_samples):
-		x = draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M)
+		x_eigen_space = draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M)
+		print("new sample in eigen space:", x_eigen_space.shape)
+		x = np.dot(eigen_signal, x_eigen_space.transpose())
+		x = np.real(x.transpose())
+		print("new sample in original feature space:", x.shape)
 		if i == 0:
 			new_samples = x
 		else:
 			new_samples = np.vstack((new_samples, x))
 
 	print('finished generation of %d samples' % n_samples)
+	print('shape of total new samples:')
+	print(new_samples.shape)
 
 	return new_samples
 
@@ -257,36 +264,36 @@ def draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M):
 
 	return x
 
-# # NOT USED: baseline function to draw samples from multivariate gaussian
-# def draw_samples(n_samples, mu, sigma):
-# 	new_samples = np.random.multivariate_normal(mu, sigma, n_samples)
-# 	# new_samples shape: n_samples * n_features
-#
-# 	return new_samples
+# NOT USED: baseline function to draw samples from multivariate gaussian
+def draw_samples(n_samples, mu, sigma):
+	new_samples = np.random.multivariate_normal(mu, sigma, n_samples)
+	# new_samples shape: n_samples * n_features
+
+	return new_samples
 
 
 def to_eigen_signal_space_per_cluster(train_p, train_n):
-	# Input is now train_p and train_n
-	# train_p: P data in that cluster, format is n_samples * n_features
-	# train_n: entire N data in original data set
-	##########################
-	## first covert data into eigenvector space (lower dimensional space)
-	##########################
-	#     # (1) seperate negative and positive class
-	#     train_x,train_y_binary=pre_process(data_dir,file_name_train,minority_label,down_sample_minority=False,
-	#     minority_div=1)
-	#     #
-	#     train_p = train_x[train_y_binary==1]
-	#     train_n = train_x[train_y_binary==0]
-	#
-	train_p = train_p.transpose()
-	train_n = train_n.transpose()
-	#
-	ts_pos = train_p.transpose()
-	ts_neg = train_n.transpose()
+	"""
+	This is the first step in drawing samples from regulated eigen matrix (to convert data into eigen vector space)
+	:param train_p: P data in that cluster, format is n_samples * n_features (this is a subset of original P class)
+	:param train_n: entire N data in original data set
+	:return:ts_neg_low_d,ts_pos_low_d,shape is n_features * n_samples
+	:return:eigen_signal, is original_n_features * lower_n_features matrix
+	:return: w: is eigen value spectrum
+	"""
+	###############
+	# ts_pos shape: n_features * n_samples
+	###############
+	print("debug before doing per cluster conversion from original feature space to eigen:")
+	print(train_p.shape)
+	print(train_n.shape)
+	ts_pos = train_p
+	ts_neg = train_n
 	# first compute x_bar
 	sum_ts_n = np.sum(ts_neg, axis=1)
 	sum_ts_p = np.sum(ts_pos, axis=1)
+	print("debug,shape of sum_ts_n")
+	print(sum_ts_n.shape)
 	#
 	n_samples = ts_pos.shape[1] + ts_neg.shape[1]
 	#
@@ -302,10 +309,7 @@ def to_eigen_signal_space_per_cluster(train_p, train_n):
 	P = ts_pos_centered.shape[1]
 	N = ts_neg_centered.shape[1]
 	#
-	ts_pos_centered = ts_pos_centered.to_numpy()
-	ts_neg_centered = ts_neg_centered.to_numpy()
-	#
-	feature_len = train_p.shape[1]
+	feature_len = train_p.shape[0]
 	sum_p = np.zeros(shape=(feature_len, feature_len))
 	sum_n = np.zeros(shape=(feature_len, feature_len))
 	for i in range(0, P):
@@ -314,7 +318,7 @@ def to_eigen_signal_space_per_cluster(train_p, train_n):
 	for i in range(0, N):
 		sum_n += np.dot(ts_neg_centered[:, i].reshape((feature_len, 1)),
 		                ts_neg_centered[:, i].transpose().reshape((1, feature_len)))
-	##
+
 	cov_mat = (sum_p + sum_n) / (P + N)
 	# eigen decomposition of covariance matrix
 	w, v = np.linalg.eig(cov_mat)
@@ -322,21 +326,32 @@ def to_eigen_signal_space_per_cluster(train_p, train_n):
 	null_index = null_index[0][0]
 	#
 	# separate the eigen vectors into signal space and null space
-	# so signal space would be eigenvecotrs 0~19, null space would be eigenvectors 20~63
 	eigen_signal = v[:, 0:null_index]
-	# transform all samples into the lower dimensional space, from 64 to 19
+	# transform all samples into the lower dimensional eigen signal space
 	ts_neg_low_d = np.dot(eigen_signal.transpose(), ts_neg)
 	ts_pos_low_d = np.dot(eigen_signal.transpose(), ts_pos)
+
+	print("debug: shape of the positive class after converting to lower dimension")
+	print(ts_pos_low_d.shape)
 
 	# returned data shape is n_features * n_samples
 	# eigen_signal is original_n_features * lower_n_features matrix
 	# w is eigen value spectrum
 	return ts_neg_low_d, ts_pos_low_d, eigen_signal, w
 
+
 #########################
 # Temporarily modify the code to draw all target samples in ONE run
 ########################
-def generate_new_samples_regu_eigen(clusters, num_new_samples):
+def generate_new_samples_regu_eigen(clusters, num_new_samples, results, train_p, train_n, eigen_signal_overall):
+	#################
+	# input:
+	# results: initial GMM clustering results (0,1 for each of data poin in original training set)
+	# train_p: original training data - minority class, n_samples * n_features
+	# train_n: original training data - majority class, n_samples * n_features
+	# eigen_signal_overall: from entire original data: shape: original_feature_dimension * lower_eigen_signal_dimension
+	# Note: train_p will be divided into 2 (or k) clusters, depending on input "results"
+	####################
 	# For initial implementation, assuming we have 2 clusters
 	# determine which cluster has a smaller pi
 	#     if clusters[0]['pi_k']<clusters[1]['pi_k']:
@@ -371,10 +386,43 @@ def generate_new_samples_regu_eigen(clusters, num_new_samples):
 	print("cluster 1 pi_k")
 	print(clusters[1]['pi_k'])
 
+	# convert train_p and train_n from eigen signal space to original feature space
+	train_p_original_feature_space = np.real(np.dot(eigen_signal_overall, train_p.transpose()))
+	train_n_original_feature_space = np.real(np.dot(eigen_signal_overall, train_n.transpose()))
+
+	# transpose train_p_original_feature_space to n_sample * n_features
+	train_p_original_feature_space = train_p_original_feature_space.transpose()
+
 	# now draw samples (number of new samples given in above calculation)
 	# draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n)
-	new_samples_c0 = draw_samples_regu_eigen_wrapper(num_new_samples_c0, train_p, train_n)
-	new_samples_c1 = draw_samples_regu_eigen_wrapper(num_new_samples_c1, train_p, train_n)
+	print("debug: shape of train_p , train_n, train_p_original_feature_space, train_n_original_feature_space")
+	print(train_p.shape)
+	print(train_n.shape)
+	print(train_p_original_feature_space.shape)
+	print(train_n_original_feature_space.shape)
+	print(train_p_original_feature_space)
+
+	# separate minority data into two clusters
+	train_p_ori_feature_cluster0 = train_p_original_feature_space[results == 0]
+	train_p_ori_feature_cluster1 = train_p_original_feature_space[results == 1]
+	print("debug: train_p_cluster0, train_p_cluster1 shape")
+	print(train_p_ori_feature_cluster0.shape)
+	print(train_p_ori_feature_cluster1.shape)
+	# again, tranpose train_p_original_feature_cluster0, so the shape is: n_features*n_samples
+	# this is the format needed for function draw_samples_regu_eigen_wrapper
+
+	train_p_ori_feature_cluster0 = train_p_ori_feature_cluster0.transpose()
+	train_p_ori_feature_cluster1 = train_p_ori_feature_cluster1.transpose()
+	# Note: No need for train_n to convert, the input shape was already n_features * n_samples
+	#
+	new_samples_c0 = draw_samples_regu_eigen_wrapper(num_new_samples_c0, train_p_ori_feature_cluster0,
+	                                                 train_n_original_feature_space)
+	new_samples_c1 = draw_samples_regu_eigen_wrapper(num_new_samples_c1, train_p_ori_feature_cluster1,
+	                                                 train_n_original_feature_space)
+
+	print("debug, shape of new_samples_c0, new_samples_c1, in original feature space:")
+	print(new_samples_c0.shape)
+	print(new_samples_c1.shape)
 
 	return new_samples_c0, new_samples_c1
 
@@ -400,7 +448,7 @@ def expectation_step(X, clusters, epsilon):
 		cov_k = cluster['cov_k']
 
 		# modify cov_k
-		cov_k_modified = modify_cov_mat(epsilon, cov_k)
+		cov_k_modified = modify_cov_mat(epsilon, cov_k, X)
 
 		#         print("shape of mu_k, before compute gamma_nk")
 		#         print(mu_k.shape)
@@ -475,8 +523,8 @@ def get_cov_matrix(X):
 
 
 # pertub covariance matrix
-def modify_cov_mat(epsilon, cov_mat):
-	cov_mat_modified = cov_mat + epsilon * np.identity(ts_pos_low_d.shape[0])
+def modify_cov_mat(epsilon, cov_mat, pos_low_d_transposed):
+	cov_mat_modified = cov_mat + epsilon * np.identity(pos_low_d_transposed.shape[1])
 
 	return cov_mat_modified
 

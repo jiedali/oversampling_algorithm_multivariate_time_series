@@ -13,6 +13,7 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 from sklearn.ensemble import RandomForestClassifier
 from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import ADASYN
 from sklearn.mixture import GaussianMixture
 
 # import imageio
@@ -28,7 +29,8 @@ from sklearn import datasets
 from sklearn.cluster import KMeans
 
 # import my own library to run em_sampling
-from em_algorithm import train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init
+import em_algorithm as em
+# from em_algorithm import train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init
 
 
 class em_workflow(object):
@@ -42,8 +44,8 @@ class em_workflow(object):
 		self.data_label = data_label
 		self.down_sample_minority = down_sample_minority
 		self.minority_div = minority_div
-		##
-		self.train_x_expanded, self.train_y_binary = self.pre_process()
+		# pre_process() returns the training data in original feature space: n_samples * _features
+
 
 	def pre_process(self):
 
@@ -64,7 +66,7 @@ class em_workflow(object):
 		# temp_t is samples * nk df
 		train_x_expanded = temp.transpose()
 		# convert y to binary label
-		train_y_binary = self.convert_y_to_binary_label(train_y, self.minority_label)
+		train_y_binary = self.convert_y_to_binary_label(train_y)
 
 		# usually the original data has a balanced ratio, in that case, we will downsample the minority
 		if self.down_sample_minority == True:
@@ -84,12 +86,12 @@ class em_workflow(object):
 			# set train_x_all = train_x_expanded
 			train_x_expanded = train_x_all
 
-		return self.train_x_expanded, self.train_y_binary
+		return train_x_expanded, train_y_binary
 
 
-	def convert_y_to_binary_label(train_y, minority_label):
+	def convert_y_to_binary_label(self, train_y):
 
-		train_y_binary = np.where(train_y == minority_label, 1, 0)
+		train_y_binary = np.where(train_y == self.minority_label, 1, 0)
 		return train_y_binary
 
 
@@ -104,14 +106,16 @@ class em_workflow(object):
 		                    shape: original_feature_dimensions * eigen_signal_dimensions
 		self.pos_low_d_transposed: minority data chunk in eigen signal space: n_samples * n_eigen_features
 		"""
+		train_x_expanded, train_y_binary = self.pre_process()
 
-		train_x, train_y_binary = self.pre_process()
+		train_x = train_x_expanded
+		train_y_binary = train_y_binary
 		#
 		train_p = train_x[train_y_binary == 1]
 		train_n = train_x[train_y_binary == 0]
 		#
-		self.train_p = train_p.transpose()
-		self.train_n = train_n.transpose()
+		train_p = train_p.transpose()
+		train_n = train_n.transpose()
 		#
 		ts_neg = train_n
 		ts_pos = train_p
@@ -151,15 +155,16 @@ class em_workflow(object):
 		#
 		# separate the eigen vectors into signal space and null space
 		# so signal space would be eigenvecotrs 0~19, null space would be eigenvectors 20~63
-		self.eigen_signal = v[:, 0:null_index]
+		eigen_signal = v[:, 0:null_index]
 		# transform all samples into the lower dimensional space, from 64 to 19
-		ts_neg_low_d = np.dot(self.eigen_signal.transpose(), ts_neg)
-		ts_pos_low_d = np.dot(self.eigen_signal.transpose(), ts_pos)
+		ts_neg_low_d = np.dot(eigen_signal.transpose(), ts_neg)
+		ts_pos_low_d = np.dot(eigen_signal.transpose(), ts_pos)
 		######
 		# covert the minority data trunk to be n_samples * n_features, also convert complex number to real
-		self.pos_low_d_transposed = np.real(ts_pos_low_d.transpose())
+		pos_low_d_transposed = np.real(ts_pos_low_d.transpose())
+		neg_low_d_transposed = np.real(ts_neg_low_d.transpose())
 
-		return self.train_p, self.train_n, self.eigen_signal, self.pos_low_d_transposed
+		return train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed
 
 
 	###########
@@ -178,16 +183,28 @@ class em_workflow(object):
 	############
 	# classification workflows for 3 different methods: EM, 100% adasyn, 100% SMOTE
 	############
-	def workflow_70_inos(self, data_dir, file_name_train, minority_label, total_new_samples_c0, total_new_samples_c1,
-	                     X_adasyn):
-		# train_x, train_y_binary = pre_process(data_dir, file_name_train, minority_label,
-		#                                       down_sample_minority=False,
-		#                                       minority_div=1)
-		#
+	# def workflow_70_inos(self, data_dir, file_name_train, minority_label, total_new_samples_c0, total_new_samples_c1,
+	#                      X_adasyn):
+	def workflow_70_inos(self, num_ADASYN):
+
 		inos_p_old = self.train_x_expanded[self.train_y_binary == 1]
 		inos_n = self.train_x_expanded[self.train_y_binary == 0]
+		# generate 30% ADASYN samples
+		# prepare data to run ADASYN: ADASYN trains on entire original training data
+		X = pd.concat((self.train_p.transpose(),self.train_n.transpose()), axis=0)
+		# create y
+		y_p = np.ones(self.train_p.shape[1])
+		y_n = np.zeros(self.train_n.shape[1])
+		y = np.concatenate((y_p, y_n))
+		# We will generate equal number of minority samples as majority samples
+		majority_sample_cnt = self.train_n.shape[1]
+		ada = ADASYN(sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
+		# X contains all data, should be in format of n_samples*n_features
+		X_res, y_res = ada.fit_resample(X, y)
+		starting_index = majority_sample_cnt - num_ADASYN
+		X_adasyn = X_res.iloc[starting_index:majority_sample_cnt, :]
 		# combine p all clusters
-		inos_p = pd.concat([inos_p_old, total_new_samples_c0, total_new_samples_c1, X_adasyn], axis=0)
+		inos_p = pd.concat([inos_p_old, self.total_new_samples_c0, self.total_new_samples_c1, X_adasyn], axis=0)
 		# combine p and n
 		x_res = pd.concat([inos_p, inos_n], axis=0)
 		# create y_res
@@ -195,11 +212,11 @@ class em_workflow(object):
 		y_res_n = np.zeros(inos_n.shape[0])
 		y_res = np.concatenate([y_res_p, y_res_n])
 		#
-		tmo = build_model(x_res, y_res)
+		tmo = self.build_model(x_res, y_res)
 		# evaluates performance
-		x_test, y_test_binary = pre_process(data_dir, file_name_test, minority_label, down_sample_minority=False)
+		x_test, y_test_binary = self.pre_process(self.data_dir, self.file_name_test, self.minority_label, down_sample_minority=False)
 		#
-		f1_score = eval_model(tmo, x_test, y_test_binary)
+		f1_score = self.eval_model(tmo, x_test, y_test_binary)
 
 		return f1_score
 
@@ -207,24 +224,28 @@ class em_workflow(object):
 	# Integrate all function to fun EM sampling and then classification
 	############
 
-	def run_em_sampling_classification(self, n_clusters, n_epochs, epsilon, num_new_samples):
+	def run_em_sampling_classification(self, n_clusters, n_epochs, epsilon, num_em_samples, num_ADASYN):
 
 		"""
+		This is the top-level method to run EM oversampling and get f1_score
 		:return:
 		f1_score: classification results
 		"""
-		self.pre_process()
-		self.raw_data_to_eigen_signal_space()
+		###
+		self.train_p, self.train_n, self.eigen_signal, self.pos_low_d_transposed = self.raw_data_to_eigen_signal_space()
+		### Step 1: Run EM algorithm to get EM samples
 		self.clusters, self.likelihoods, self.scores, self.sample_likelihoods, self.history, self.total_new_samples_c0, self.total_new_samples_c1 = \
-			train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(self.pos_low_d_transposed, n_clusters, n_epochs, epsilon, num_new_samples)
+			em.train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(self.pos_low_d_transposed, n_clusters, n_epochs, epsilon, num_em_samples)
 		# convert new samples back to original feature space
 		total_new_samples_c0 = self.back_original_feature_space(self.total_new_samples_c0)
 		total_new_samples_c1 = self.back_original_feature_space(self.total_new_samples_c1)
 		# format the new samples (transpose it and convert it to pandas dataframe)
-		total_new_samples_c0 = pd.DataFrame(np.real(total_new_samples_c0.transpose()))
-		total_new_samples_c1 = pd.DataFrame(np.real(total_new_samples_c1.transpose()))
-		# get classification results
-		self.f1_score=self.em_workflow()
+		self.total_new_samples_c0 = pd.DataFrame(np.real(total_new_samples_c0.transpose()))
+		self.total_new_samples_c1 = pd.DataFrame(np.real(total_new_samples_c1.transpose()))
+		#
+		# STEP 2: get classification results
+		self.f1_score= self.workflow_70_inos(num_ADASYN)
+
 
 		return self.f1_score
 
