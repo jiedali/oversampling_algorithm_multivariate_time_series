@@ -47,9 +47,11 @@ class em_workflow(object):
 		# pre_process() returns the training data in original feature space: n_samples * _features
 
 
-	def pre_process(self):
-
-		train_x, train_y = load_from_tsfile_to_dataframe(os.path.join(self.data_dir, self.file_name_train))
+	def pre_process(self, test_data=False):
+		if test_data == True:
+			train_x, train_y = load_from_tsfile_to_dataframe(os.path.join(self.data_dir, self.file_name_test))
+		elif test_data == False:
+			train_x, train_y = load_from_tsfile_to_dataframe(os.path.join(self.data_dir, self.file_name_train))
 		# train_x is  samples * k features
 		# expand train_x to be samples * (kn), where n is the number of temporal dimension
 		concatenator = ColumnConcatenator()
@@ -180,41 +182,102 @@ class em_workflow(object):
 
 		return new_samples_original_feature
 
+	## wrap classiciation and evaluation in function
+	from sklearn.ensemble import RandomForestClassifier
+
+	def build_model(self, x_train, y_train):
+		"""
+		x_train: organized training data, i samples * n features (n is expanded time dimensioon)
+		y_train: labesl of training data
+		"""
+		# run classification use randomforest classifier
+		clf = RandomForestClassifier(n_estimators=100, random_state=0)
+		clf.fit(x_train, y_train)
+
+		return clf
+
+	## evaluate model performance
+	from sklearn.metrics import confusion_matrix
+
+	def eval_model(self, tmo, x_test, y_test):
+		"""
+		tmo: trained model object, returned from the build_model function
+		x_test: test data, i samples * n features (n is expanded time dimension)
+		y_test: lables of test set
+		"""
+
+		pred_y = tmo.predict(x_test)
+		# confusion matrix
+		cm = confusion_matrix(y_test, pred_y, labels=[1, 0])
+		print(cm)
+		#
+		if cm[0][0] == cm[1][0] == 0:
+			precision = 0
+		else:
+			precision = cm[0][0] / (cm[0][0] + cm[1][0])
+		recall = cm[0][0] / (cm[0][0] + cm[0][1])
+		#
+
+		f1_score = 2 * (precision * recall) / (precision + recall)
+		acc = (cm[0][0] + cm[1][1]) / (cm[0][0] + cm[1][1] + cm[0][1] + cm[1][0])
+		#
+		print('precision:', precision, 'recall:', recall, 'f1_score:', f1_score, 'accuracy:', acc)
+
+		return f1_score
+
+
+
 	############
 	# classification workflows for 3 different methods: EM, 100% adasyn, 100% SMOTE
 	############
-	# def workflow_70_inos(self, data_dir, file_name_train, minority_label, total_new_samples_c0, total_new_samples_c1,
-	#                      X_adasyn):
-	def workflow_70_inos(self, num_ADASYN):
 
-		inos_p_old = self.train_x_expanded[self.train_y_binary == 1]
-		inos_n = self.train_x_expanded[self.train_y_binary == 0]
+	def workflow_70_inos(self, num_ADASYN, train_p, train_n, total_new_samples_c0, total_new_samples_c1):
+
+		# format the new samples (transpose it and convert it to pandas dataframe)
+		total_new_samples_c0 = pd.DataFrame(np.real(total_new_samples_c0))
+		total_new_samples_c1 = pd.DataFrame(np.real(total_new_samples_c1))
+
+		print("debug, shape of total_new_samples_c0, total_new_samples_c1")
+		print(total_new_samples_c0.shape)
+		print(total_new_samples_c1.shape)
+
+		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
+
+		inos_p_old = train_x_expanded[train_y_binary == 1]
+		inos_n = train_x_expanded[train_y_binary == 0]
+		print("debug, shape of inos_p_old, inos_n")
+		print(inos_p_old.shape, inos_n.shape)
 		# generate 30% ADASYN samples
 		# prepare data to run ADASYN: ADASYN trains on entire original training data
-		X = pd.concat((self.train_p.transpose(),self.train_n.transpose()), axis=0)
+		X = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
 		# create y
-		y_p = np.ones(self.train_p.shape[1])
-		y_n = np.zeros(self.train_n.shape[1])
+		y_p = np.ones(train_p.shape[1])
+		y_n = np.zeros(train_n.shape[1])
 		y = np.concatenate((y_p, y_n))
 		# We will generate equal number of minority samples as majority samples
-		majority_sample_cnt = self.train_n.shape[1]
+		majority_sample_cnt = train_n.shape[1]
 		ada = ADASYN(sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
 		# X contains all data, should be in format of n_samples*n_features
 		X_res, y_res = ada.fit_resample(X, y)
 		starting_index = majority_sample_cnt - num_ADASYN
 		X_adasyn = X_res.iloc[starting_index:majority_sample_cnt, :]
+		print("debug, X_adasyn shape")
+		print(X_adasyn.shape)
 		# combine p all clusters
-		inos_p = pd.concat([inos_p_old, self.total_new_samples_c0, self.total_new_samples_c1, X_adasyn], axis=0)
+		inos_p = pd.concat([inos_p_old, total_new_samples_c0, total_new_samples_c1, X_adasyn], axis=0)
 		# combine p and n
 		x_res = pd.concat([inos_p, inos_n], axis=0)
 		# create y_res
 		y_res_p = np.ones(inos_p.shape[0])
 		y_res_n = np.zeros(inos_n.shape[0])
 		y_res = np.concatenate([y_res_p, y_res_n])
+		print("debug, shape of training data:")
+		print(x_res.shape)
+		print(y_res.shape)
 		#
 		tmo = self.build_model(x_res, y_res)
 		# evaluates performance
-		x_test, y_test_binary = self.pre_process(self.data_dir, self.file_name_test, self.minority_label, down_sample_minority=False)
+		x_test, y_test_binary = self.pre_process(test_data=True)
 		#
 		f1_score = self.eval_model(tmo, x_test, y_test_binary)
 
@@ -224,30 +287,30 @@ class em_workflow(object):
 	# Integrate all function to fun EM sampling and then classification
 	############
 
-	def run_em_sampling_classification(self, n_clusters, n_epochs, epsilon, num_em_samples, num_ADASYN):
-
+	def run_em_sampling_classification(self, num_ADASYN, train_p, train_n, total_new_samples_c0, total_new_samples_c1):
 		"""
 		This is the top-level method to run EM oversampling and get f1_score
 		:return:
 		f1_score: classification results
 		"""
 		###
-		self.train_p, self.train_n, self.eigen_signal, self.pos_low_d_transposed = self.raw_data_to_eigen_signal_space()
-		### Step 1: Run EM algorithm to get EM samples
-		self.clusters, self.likelihoods, self.scores, self.sample_likelihoods, self.history, self.total_new_samples_c0, self.total_new_samples_c1 = \
-			em.train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(self.pos_low_d_transposed, n_clusters, n_epochs, epsilon, num_em_samples)
-		# convert new samples back to original feature space
-		total_new_samples_c0 = self.back_original_feature_space(self.total_new_samples_c0)
-		total_new_samples_c1 = self.back_original_feature_space(self.total_new_samples_c1)
+		# self.train_p, self.train_n, self.eigen_signal, self.pos_low_d_transposed = self.raw_data_to_eigen_signal_space()
+		# ### Step 1: Run EM algorithm to get EM samples
+		# self.clusters, self.likelihoods, self.scores, self.sample_likelihoods, self.history, self.total_new_samples_c0, self.total_new_samples_c1 = \
+		# 	em.train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init(self.pos_low_d_transposed, n_clusters, n_epochs, epsilon, num_em_samples)
+		# # convert new samples back to original feature space
+		# total_new_samples_c0 = self.back_original_feature_space(self.total_new_samples_c0)
+		# total_new_samples_c1 = self.back_original_feature_space(self.total_new_samples_c1)
+
 		# format the new samples (transpose it and convert it to pandas dataframe)
-		self.total_new_samples_c0 = pd.DataFrame(np.real(total_new_samples_c0.transpose()))
-		self.total_new_samples_c1 = pd.DataFrame(np.real(total_new_samples_c1.transpose()))
+		total_new_samples_c0 = pd.DataFrame(np.real(total_new_samples_c0.transpose()))
+		total_new_samples_c1 = pd.DataFrame(np.real(total_new_samples_c1.transpose()))
 		#
 		# STEP 2: get classification results
-		self.f1_score= self.workflow_70_inos(num_ADASYN)
+		f1_score= self.workflow_70_inos(num_ADASYN, train_p, train_n, total_new_samples_c0, total_new_samples_c1)
 
 
-		return self.f1_score
+		return f1_score
 
 
 

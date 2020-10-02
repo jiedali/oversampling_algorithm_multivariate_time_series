@@ -24,5 +24,10 @@ n_epochs = 2
 clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, \
 total_new_samples_c1 = train_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, 45, eigen_signal)
 
-# # step 2: call the top level method (which generates new samples and run classification)
-# f1_score = workflow1.run_em_sampling_classification(n_clusters=2,n_epochs=2,epsilon=0.01,num_new_samples=45, num_ADASYN=20)
+# step 2: call the top level method (which generates new samples and run classification)
+
+# f1_score = workflow1.run_em_sampling_classification(num_ADASYN=20, train_p=train_p, train_n=train_n,
+#                             total_new_samples_c0=total_new_samples_c0, total_new_samples_c1=total_new_samples_c1)
+
+
+f1_score = workflow1.workflow_70_inos(num_ADASYN=20, train_p=train_p, train_n=train_n, total_new_samples_c0=total_new_samples_c0, total_new_samples_c1=total_new_samples_c1)
