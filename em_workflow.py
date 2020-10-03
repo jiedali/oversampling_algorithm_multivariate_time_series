@@ -208,7 +208,7 @@ class em_workflow(object):
 
 		pred_y = tmo.predict(x_test)
 		# confusion matrix
-		cm = confusion_matrix(y_test, pred_y, labels=[0,1])
+		cm = confusion_matrix(y_test, pred_y, labels=[1,0])
 		print(cm)
 		#
 		if cm[0][0] == cm[1][0] == 0:
