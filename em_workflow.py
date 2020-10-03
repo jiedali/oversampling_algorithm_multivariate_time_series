@@ -311,7 +311,7 @@ class em_workflow(object):
 
 		return f1_score
 
-	def workflow_100_adasyn(self, num_ADASYN, train_p, train_n):
+	def workflow_100_adasyn(self, num_ADASYN, train_p, train_n,random_number):
 
 		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
 
@@ -328,7 +328,8 @@ class em_workflow(object):
 		y = np.concatenate((y_p, y_n))
 		# We will generate equal number of minority samples as majority samples
 		majority_sample_cnt = train_n.shape[1]
-		ada = ADASYN(sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
+		ada = ADASYN(random_state=random_number, sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
+		print("random state number %d: " % random_number)
 		# X contains all data, should be in format of n_samples*n_features
 		X_res, y_res = ada.fit_resample(X, y)
 		starting_index = majority_sample_cnt - num_ADASYN
@@ -354,6 +355,46 @@ class em_workflow(object):
 		f1_score = self.eval_model(tmo, x_test, y_test_binary)
 
 		return f1_score
+
+	def workflow_100_smote(self, num_SMOTE, train_p, train_n):
+
+		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
+		original_p = train_x_expanded[train_y_binary == 1]
+		original_n = train_x_expanded[train_y_binary == 0]
+
+
+		original_P_N = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
+		# create y
+		y_p = np.ones(train_p.shape[1])
+		y_n = np.zeros(train_n.shape[1])
+		y = np.concatenate((y_p, y_n))
+		# input: original_P_N: n_samples * n_features, original data set including P and N
+		# input: y: corresponding lables for original data set
+		# SMOTE
+		sm = SMOTE(sampling_strategy=1)
+		# x_res included both original and SMOTE synthesized data
+		X_smote, y_smote = sm.fit_resample(original_P_N, y)
+		#
+		total_P = pd.concat([original_p, X_smote], axis=0)
+		print("debug, shape of total_P")
+		print(total_P.shape)
+		# combine p and n
+		total_P_N = pd.concat([total_P, original_n], axis=0)
+		y_res_p = np.ones(total_P.shape[0])
+		y_res_n = np.zeros(original_n.shape[0])
+		y_res = np.concatenate([y_res_p, y_res_n])
+		#
+		tmo = self.build_model(total_P_N, y_res)
+		# evaluates performance
+		x_test, y_test_binary = self.pre_process(test_data=True)
+		#
+		f1_score = self.eval_model(tmo, x_test, y_test_binary)
+
+		return f1_score
+
+
+
+
 
 
 

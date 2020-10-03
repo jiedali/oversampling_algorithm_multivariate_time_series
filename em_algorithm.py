@@ -52,6 +52,7 @@ def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_
 	"""
 
 	clusters, results = initialize_clusters_with_gmm_results(X, n_clusters)
+
 	# return the clustering membership
 	clustering_results = results
 	likelihoods = np.zeros((n_epochs,))
@@ -134,10 +135,7 @@ def initialize_clusters_with_gmm_results(X, n_clusters):
 			'mu_k': mu_k[i],
 			'cov_k': cov_mat[i]
 		})
-		# print("iteration %d, clusters length:%d" %(i,len(clusters)))
-		# print(clusters)
 
-	print(clusters)
 	return clusters, results
 
 
@@ -173,6 +171,8 @@ def reg_eigen_spectrum(cov_pos):
 	w_pos, v_pos = np.linalg.eig(cov_pos)
 	#
 	w_pos = np.real(w_pos)
+	print("debug, w_pos:")
+	print(w_pos)
 	#
 	M = np.where(w_pos < 5e-5)
 	#
@@ -213,6 +213,7 @@ def draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n):
 	q1_bar, cov_pos = pos_class_covariance(ts_pos_low_d)
 	# perform eigen spectrum regularization
 	v_pos, regu_eigen_values, M = reg_eigen_spectrum(cov_pos)
+	print("Debug: value of M: %d" % M)
 	# draw samples
 	for i in range(0, n_samples):
 		x_eigen_space = draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M)
