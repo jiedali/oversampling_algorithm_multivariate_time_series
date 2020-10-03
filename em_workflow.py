@@ -208,7 +208,7 @@ class em_workflow(object):
 
 		pred_y = tmo.predict(x_test)
 		# confusion matrix
-		cm = confusion_matrix(y_test, pred_y, labels=[1, 0])
+		cm = confusion_matrix(y_test, pred_y, labels=[0,1])
 		print(cm)
 		#
 		if cm[0][0] == cm[1][0] == 0:
@@ -228,8 +228,36 @@ class em_workflow(object):
 
 
 	############
-	# classification workflows for 3 different methods: EM, 100% adasyn, 100% SMOTE
+	# classification workflows for 3 different methods plus no oversampling: EM, 100% adasyn, 100% SMOTE
 	############
+
+	def workflow_no_oversampling(self):
+		"""
+		This function performs the workflow of classification without any oversampling
+		:return: f1 score without oversampling
+		"""
+		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
+		inos_p_old = train_x_expanded[train_y_binary == 1]
+		inos_n = train_x_expanded[train_y_binary == 0]
+		print("debug, shape of inos_p_old, inos_n")
+		print(inos_p_old.shape, inos_n.shape)
+		x_res = pd.concat([inos_p_old, inos_n], axis=0)
+		# create y_res
+		y_res_p = np.ones(inos_p_old.shape[0])
+		y_res_n = np.zeros(inos_n.shape[0])
+		y_res = np.concatenate([y_res_p, y_res_n])
+		print("debug, shape of training data:")
+		print(x_res.shape)
+		print(y_res.shape)
+		#
+		tmo = self.build_model(x_res, y_res)
+		# evaluates performance
+		x_test, y_test_binary = self.pre_process(test_data=True)
+		#
+		f1_score = self.eval_model(tmo, x_test, y_test_binary)
+
+		return f1_score
+
 
 	def workflow_70_inos(self, num_ADASYN, train_p, train_n, total_new_samples_c0, total_new_samples_c1):
 
