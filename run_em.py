@@ -33,7 +33,7 @@ train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = wor
 
 f1_score_list=[]
 for i in range(1):
-	n_clusters = 2
+	n_clusters = 1
 	n_epochs = 2
 	clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, \
 	total_new_samples_c1 = train_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, 98,

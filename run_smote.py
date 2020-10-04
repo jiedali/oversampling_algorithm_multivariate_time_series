@@ -44,4 +44,3 @@ print("mean f1_score: %d" % statistics.mean(f1_socre_list))
 print("max f1_score: %d" % max(f1_socre_list))
 
 
-### Test branch multi modes

@@ -30,6 +30,7 @@ from matplotlib.patches import Ellipse
 from sklearn import datasets
 from sklearn.cluster import KMeans
 
+
 ################
 # Integrated EM sampling algorithm
 # This is the top level function that calls all the sub functions
@@ -47,8 +48,8 @@ def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_
 
 	:return: clusters, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, total_new_samples_c1
 	clusters: list with each element a dictionary containing information for each cluster
-	total_new_samples_c0: EM generated new samples for cluster 0: n_samples * n_features
-	total_new_samples_c1: EM generated new samples for cluster 1: n_samples * n_features
+	new_samples_all_clusters: a LIST of numpy array, each being the new samples for each cluster;
+	For each cluster, the numpy array has a shape of: n_samples * n_features
 	"""
 
 	clusters, results = initialize_clusters_with_gmm_results(X, n_clusters)
@@ -80,15 +81,15 @@ def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_
 		# first get the target number of samples to be generated for each cluster
 		# new_samples_c0, new_samples_c1 = generate_new_samples(clusters)
 		if i != 0:
-			new_samples_c0, new_samples_c1 = generate_new_samples_regu_eigen(clusters, num_new_samples, results, X,
+			new_samples_all_clusters = generate_new_samples_regu_eigen(clusters, num_new_samples, results, X,
 			                                                                 train_n, eigen_signal_overall)
 
-			if i == 1:
-				total_new_samples_c0 = new_samples_c0
-				total_new_samples_c1 = new_samples_c1
-			else:
-				total_new_samples_c0 = np.vstack((total_new_samples_c0, new_samples_c0))
-				total_new_samples_c1 = np.vstack((total_new_samples_c1, new_samples_c1))
+			# if i == 1:
+			# 	total_new_samples_c0 = new_samples_c0
+			# 	total_new_samples_c1 = new_samples_c1
+			# # else:
+			# # 	total_new_samples_c0 = np.vstack((total_new_samples_c0, new_samples_c0))
+			# # 	total_new_samples_c1 = np.vstack((total_new_samples_c1, new_samples_c1))
 
 		#
 		expectation_step(X, clusters, epsilon)
@@ -103,7 +104,8 @@ def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_
 	for i, cluster in enumerate(clusters):
 		scores[:, i] = np.log(cluster['gamma_nk']).reshape(-1)
 
-	return clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, total_new_samples_c0, total_new_samples_c1
+	return clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, new_samples_all_clusters
+
 
 #################
 # initialize clusters
@@ -265,6 +267,7 @@ def draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M):
 
 	return x
 
+
 # NOT USED: baseline function to draw samples from multivariate gaussian
 def draw_samples(n_samples, mu, sigma):
 	new_samples = np.random.multivariate_normal(mu, sigma, n_samples)
@@ -352,40 +355,13 @@ def generate_new_samples_regu_eigen(clusters, num_new_samples, results, train_p,
 	# train_n: original training data - majority class, n_samples * n_features
 	# eigen_signal_overall: from entire original data: shape: original_feature_dimension * lower_eigen_signal_dimension
 	# Note: train_p will be divided into 2 (or k) clusters, depending on input "results"
+	# return:
+	# new_samples_original_feature_all_clusters: this is the list of new samples generated for each cluster
 	####################
-	# For initial implementation, assuming we have 2 clusters
-	# determine which cluster has a smaller pi
-	#     if clusters[0]['pi_k']<clusters[1]['pi_k']:
-	#         smaller_pi_cluster_index = 0
-	#     else:
-	#         smaller_pi_cluster_index = 1
 
-	#     # assign the number of news samples to be generated from each cluster
-	#     if smaller_pi_cluster_index == 0:
-	# #         num_new_samples_c0 = 1
-	# #         num_new_samples_c1 = 1
-	#         num_new_samples_c0 = 1
-	#         num_new_samples_c1 = int(round(clusters[1]['pi_k'].item(0)/clusters[0]['pi_k'].item(0)))
-	#         print("Number of new samples to be generated for c0 and c1:")
-	#         print(num_new_samples_c0, num_new_samples_c1)
-
-	#     elif smaller_pi_cluster_index == 1:
-	# #         num_new_samples_c1 = 1
-	# #         num_new_samples_c0 = 1
-	#         num_new_samples_c0 = int(round(clusters[0]['pi_k'].item(0)/clusters[1]['pi_k'].item(0)))
-	#         num_new_samples_c1 = 1
 	###############
 	# Temp: for now we will generate all samples in one run: sample count be proportional to cluster size
 	#################
-	num_new_samples_c0 = round(num_new_samples * clusters[0]['pi_k'].item(0))
-	num_new_samples_c1 = round(num_new_samples * clusters[1]['pi_k'].item(0))
-	#
-	print("Number of new samples to be generated for c0 and c1:")
-	print(num_new_samples_c0, num_new_samples_c1)
-	print("cluster 0 pi_k")
-	print(clusters[0]['pi_k'])
-	print("cluster 1 pi_k")
-	print(clusters[1]['pi_k'])
 
 	# convert train_p and train_n from eigen signal space to original feature space
 	train_p_original_feature_space = np.real(np.dot(eigen_signal_overall, train_p.transpose()))
@@ -403,33 +379,43 @@ def generate_new_samples_regu_eigen(clusters, num_new_samples, results, train_p,
 	print(train_n_original_feature_space.shape)
 	print(train_p_original_feature_space)
 
-	# separate minority data into two clusters
-	train_p_ori_feature_cluster0 = train_p_original_feature_space[results == 0]
-	train_p_ori_feature_cluster1 = train_p_original_feature_space[results == 1]
-	print("debug: train_p_cluster0, train_p_cluster1 shape")
-	print(train_p_ori_feature_cluster0.shape)
-	print(train_p_ori_feature_cluster1.shape)
-	# again, tranpose train_p_original_feature_cluster0, so the shape is: n_features*n_samples
-	# this is the format needed for function draw_samples_regu_eigen_wrapper
+	# initialize some lists used to store parameters/results related to multi modes
+	num_new_samples_all_clusters = []
+	train_p_original_feature_all_clusters = []
+	new_samples_original_feature_all_clusters = []
 
-	train_p_ori_feature_cluster0 = train_p_ori_feature_cluster0.transpose()
-	train_p_ori_feature_cluster1 = train_p_ori_feature_cluster1.transpose()
-	# Note: No need for train_n to convert, the input shape was already n_features * n_samples
+	for cluster_index in range(len(clusters)):
+		# get number of new samples to generate for each cluster
+		num_new_sample_per_cluster = round(num_new_samples * clusters[cluster_index]['pi_k'].item(0))
+		num_new_samples_all_clusters.append(num_new_sample_per_cluster)
+		print("pi_k for cluster %d" % cluster_index)
+		# get the original train_p for each cluster
+		train_p_ori_feature_per_cluster = train_p_original_feature_space[results == cluster_index]
+		# Transpose train_p_original_feature_per_cluster, so the shape is: n_features*n_samples
+		# this is the format needed for function draw_samples_regu_eigen_wrapper
+		train_p_ori_feature_per_cluster = train_p_ori_feature_per_cluster.transpose()
+		#
+		train_p_original_feature_all_clusters.append(train_p_ori_feature_per_cluster)
+		print("debug: original train_p for cluster %d has the shape" % cluster_index)
+		print(train_p_ori_feature_per_cluster.shape)
+		# draw new samples
+		new_samples_per_cluster = draw_samples_regu_eigen_wrapper(num_new_sample_per_cluster,
+		                                                          train_p_ori_feature_per_cluster,
+		                                                          train_n_original_feature_space)
+		print("debug: new samples shape for cluster %d" % cluster_index)
+		print(new_samples_per_cluster.shape)
+		#
+		new_samples_original_feature_all_clusters.append(new_samples_per_cluster)
+
 	#
-	new_samples_c0 = draw_samples_regu_eigen_wrapper(num_new_samples_c0, train_p_ori_feature_cluster0,
-	                                                 train_n_original_feature_space)
-	new_samples_c1 = draw_samples_regu_eigen_wrapper(num_new_samples_c1, train_p_ori_feature_cluster1,
-	                                                 train_n_original_feature_space)
+	print("Number of new samples to be generated for c0 and c1:")
+	print(num_new_samples_all_clusters)
 
-	print("debug, shape of new_samples_c0, new_samples_c1, in original feature space:")
-	print(new_samples_c0.shape)
-	print(new_samples_c1.shape)
-
-	return new_samples_c0, new_samples_c1
+	return new_samples_original_feature_all_clusters
 
 
 ###############
-#Expecation and Maximization step
+# Expecation and Maximization step
 ###############
 
 def expectation_step(X, clusters, epsilon):
@@ -552,6 +538,3 @@ def truncate_spo_samples(target_num, total_new_samples_c0, total_new_samples_c1)
 	#
 
 	return truncated_samples_c0, truncated_samples_c1
-
-
-
