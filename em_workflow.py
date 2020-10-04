@@ -311,7 +311,7 @@ class em_workflow(object):
 
 		return f1_score
 
-	def workflow_100_adasyn(self, num_ADASYN, train_p, train_n,random_number):
+	def workflow_100_adasyn(self, num_ADASYN, train_p, train_n):
 
 		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
 
@@ -327,13 +327,18 @@ class em_workflow(object):
 		y_n = np.zeros(train_n.shape[1])
 		y = np.concatenate((y_p, y_n))
 		# We will generate equal number of minority samples as majority samples
-		majority_sample_cnt = train_n.shape[1]
-		ada = ADASYN(random_state=random_number, sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
-		print("random state number %d: " % random_number)
+		#
+		ada = ADASYN(sampling_strategy=1.0, n_neighbors=5)
 		# X contains all data, should be in format of n_samples*n_features
 		X_res, y_res = ada.fit_resample(X, y)
-		starting_index = majority_sample_cnt - num_ADASYN
-		X_adasyn = X_res.iloc[starting_index:majority_sample_cnt, :]
+		# In X_res, the first segment is original minority class samples, 2nd segment is original majority class samples
+		# last segment is synthesized minority samples, we only want the last segment
+		num_adasyn_samples_generated = X_res.shape[0] - train_p.shape[1] - train_n.shape[1]
+		starting_index = X_res.shape[0] - num_adasyn_samples_generated
+		if num_ADASYN >= num_adasyn_samples_generated:
+			X_adasyn = X_res.iloc[starting_index:X_res.shape[0], :]
+		elif num_ADASYN < num_adasyn_samples_generated:
+			X_adasyn = X_res.iloc[starting_index:(starting_index+num_ADASYN)]
 		print("debug, X_adasyn shape")
 		print(X_adasyn.shape)
 		# combine p all clusters
@@ -391,6 +396,37 @@ class em_workflow(object):
 		f1_score = self.eval_model(tmo, x_test, y_test_binary)
 
 		return f1_score
+
+
+
+	def create_adasyn_samples(self, num_ADASYN, train_p, train_n):
+
+		# train_x_expanded, train_y_binary = self.pre_process(test_data=False)
+
+		# inos_p_old = train_x_expanded[train_y_binary == 1]
+		# inos_n = train_x_expanded[train_y_binary == 0]
+		# generate 30% ADASYN samples
+		# prepare data to run ADASYN: ADASYN trains on entire original training data
+		X = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
+		# create y
+		y_p = np.ones(train_p.shape[1])
+		y_n = np.zeros(train_n.shape[1])
+		y = np.concatenate((y_p, y_n))
+		# We will generate equal number of minority samples as majority samples
+		majority_sample_cnt = train_n.shape[1]
+		# ada = ADASYN(sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
+		ada = ADASYN(sampling_strategy=1.0, n_neighbors=10)
+		# X contains all data, should be in format of n_samples*n_features
+		X_res, y_res = ada.fit_resample(X, y)
+		# In X_res, the first segment is original minority class samples, 2nd segment is original majority class samples
+		# last segment is synthesized minority samples, we only want the last segment
+		num_adasyn_samples_generated = X_res.shape[0] - train_p.shape[1] - train_n.shape[1]
+		starting_index = X_res.shape[0] - num_adasyn_samples_generated
+		X_adasyn = X_res.iloc[starting_index:X_res.shape[0], :]
+		print("debug, X_adasyn shape")
+		print(X_adasyn.shape)
+
+		return X_adasyn
 
 
 

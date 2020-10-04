@@ -3,24 +3,25 @@ from em_algorithm import train_gmm
 from em_algorithm import *
 import statistics
 from visualization import visualize
+import constants as const
 
 ##########
 # Parameters for selected data set
 ##########
-data_dir = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/RacketSports/'
-file_name_train = 'RacketSports_TRAIN.ts'
-file_name_test = 'RacketSports_TEST.ts'
-minority_label = 'badminton_clear'
-data_label = 'RacketSports'
-down_sample_minority = True
-minority_div = 4
+data_dir = const.DATA_DIR
+file_name_train = const.FILE_NAME_TRAIN
+file_name_test = const.FILE_NAME_TEST
+minority_label = const.MINORITY_LABEL
+data_label = const.DATA_LABEL
+down_sample_minority = const.DOWN_SAMPLE_MINORITY
+minority_div = const.MINORITY_DIV
 ##########
 #parameters related to the choice of method and number repeats
 ##########
-num_repeats = 1
+num_repeats = const.NUM_REPEATS
 ###########
 #parameters related to file names
-plot_name = ''
+plot_name = const.PLOT_NAME
 ###########
 
 # step 1: create an instance of em_workflow class
