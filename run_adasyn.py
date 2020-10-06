@@ -32,15 +32,16 @@ train_x_expanded, train_y_binary = workflow1.pre_process()
 # input shape for train_p is n_features * n_samples
 train_p = train_x_expanded[train_y_binary == 1].transpose()
 train_n = train_x_expanded[train_y_binary == 0].transpose()
-
+num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
+print("Number of adasyn samples to generate: %d" % num_new_samples_to_gen)
 
 # train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
 
 
 f1_socre_list=[]
-for i in range(10):
+for i in range(1):
 
-	f1_score = workflow1.workflow_100_adasyn(num_ADASYN=140, train_p=train_p, train_n=train_n)
+	f1_score = workflow1.workflow_100_adasyn(num_ADASYN=num_new_samples_to_gen, train_p=train_p, train_n=train_n)
 	f1_socre_list.append(f1_score)
 
 print(f1_socre_list)

@@ -62,9 +62,9 @@ def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_
 
 	for i in range(n_epochs):
 
-		print('Pi_k at the beginning of %d iteration' % i)
-		print('cluster0', clusters[0]['pi_k'])
-		print('cluster1', clusters[1]['pi_k'])
+		# print('Pi_k at the beginning of %d iteration' % i)
+		# print('cluster0', clusters[0]['pi_k'])
+		# print('cluster1', clusters[1]['pi_k'])
 
 		clusters_snapshot = []
 
@@ -120,7 +120,7 @@ def initialize_clusters_with_gmm_results(X, n_clusters):
 	idx = np.arange(X.shape[0])
 
 	# initialize with GMM results: Mean and Covariances
-	gmm = GaussianMixture(n_components=2, covariance_type='full')
+	gmm = GaussianMixture(n_components=n_clusters, covariance_type='full')
 	#
 	results = gmm.fit_predict(X)
 	#

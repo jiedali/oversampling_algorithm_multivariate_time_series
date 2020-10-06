@@ -259,15 +259,29 @@ class em_workflow(object):
 		return f1_score
 
 
-	def workflow_70_inos(self, num_ADASYN, train_p, train_n, total_new_samples_c0, total_new_samples_c1):
+	def workflow_70_inos(self, num_ADASYN, train_p, train_n, new_samples_all_clusters):
 
-		# format the new samples (transpose it and convert it to pandas dataframe)
-		total_new_samples_c0 = pd.DataFrame(np.real(total_new_samples_c0))
-		total_new_samples_c1 = pd.DataFrame(np.real(total_new_samples_c1))
+		# format the new samples (transpose it and convert it to pandas dataframe) and concat them
+		new_samples_pd_list = []
+		for cluster_index in range(len(new_samples_all_clusters)):
+			new_samples_per_cluster = pd.DataFrame(np.real(new_samples_all_clusters[cluster_index]))
 
-		print("debug, shape of total_new_samples_c0, total_new_samples_c1")
-		print(total_new_samples_c0.shape)
-		print(total_new_samples_c1.shape)
+			print("debug, shape of new samples for cluster %d" % cluster_index)
+			print(new_samples_per_cluster.shape)
+			# add the converted dataframe back to the list; Now the list contains as many dataframe as number of clusters
+			new_samples_pd_list.append(new_samples_per_cluster)
+
+		# concat new samples for each cluster
+		if len(new_samples_all_clusters) == 1:
+			new_samples_concated = new_samples_per_cluster
+		else:
+			new_samples_concated = pd.concat([i for i in new_samples_pd_list], axis=0)
+		#
+		print("debug, shape of concatenated new samples for %d clusters:" % len(new_samples_all_clusters))
+		print(new_samples_concated.shape)
+
+		# concatenated new samples in shape of n_samples * n_features
+
 
 		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
 
@@ -275,7 +289,9 @@ class em_workflow(object):
 		inos_n = train_x_expanded[train_y_binary == 0]
 		print("debug, shape of inos_p_old, inos_n")
 		print(inos_p_old.shape, inos_n.shape)
+		#################################
 		# generate 30% ADASYN samples
+		#################################
 		# prepare data to run ADASYN: ADASYN trains on entire original training data
 		X = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
 		# create y
@@ -284,15 +300,27 @@ class em_workflow(object):
 		y = np.concatenate((y_p, y_n))
 		# We will generate equal number of minority samples as majority samples
 		majority_sample_cnt = train_n.shape[1]
-		ada = ADASYN(sampling_strategy={1: majority_sample_cnt, 0: majority_sample_cnt})
-		# X contains all data, should be in format of n_samples*n_features
-		X_res, y_res = ada.fit_resample(X, y)
-		starting_index = majority_sample_cnt - num_ADASYN
-		X_adasyn = X_res.iloc[starting_index:majority_sample_cnt, :]
-		print("debug, X_adasyn shape")
-		print(X_adasyn.shape)
-		# combine p all clusters
-		inos_p = pd.concat([inos_p_old, total_new_samples_c0, total_new_samples_c1, X_adasyn], axis=0)
+
+		if num_ADASYN != 0:
+
+			ada = ADASYN(sampling_strategy=1.0, n_neighbors=5)
+			# X contains all data, should be in format of n_samples*n_features
+			X_res, y_res = ada.fit_resample(X, y)
+			# In X_res, the first segment is original minority class samples, 2nd segment is original majority class samples
+			# last segment is synthesized minority samples, we only want the last segment
+			num_adasyn_samples_generated = X_res.shape[0] - train_p.shape[1] - train_n.shape[1]
+			starting_index = X_res.shape[0] - num_adasyn_samples_generated
+			if num_ADASYN >= num_adasyn_samples_generated:
+				X_adasyn = X_res.iloc[starting_index:X_res.shape[0], :]
+			elif num_ADASYN < num_adasyn_samples_generated:
+				X_adasyn = X_res.iloc[starting_index:(starting_index+num_ADASYN)]
+			print("debug, X_adasyn shape")
+			print(X_adasyn.shape)
+			############################combine all samples, prepare for training
+			# combine p all clusters
+			inos_p = pd.concat([inos_p_old, new_samples_concated, X_adasyn], axis=0)
+		else:
+			inos_p = pd.concat([inos_p_old, new_samples_concated], axis=0)
 		# combine p and n
 		x_res = pd.concat([inos_p, inos_n], axis=0)
 		# create y_res
@@ -379,8 +407,10 @@ class em_workflow(object):
 		sm = SMOTE(sampling_strategy=1)
 		# x_res included both original and SMOTE synthesized data
 		X_smote, y_smote = sm.fit_resample(original_P_N, y)
+		starting_index = train_p.shape[1] + train_n.shape[1]
 		#
-		total_P = pd.concat([original_p, X_smote], axis=0)
+		X_smote_new =X_smote.iloc[starting_index:X_smote.shape[0],:]
+		total_P = pd.concat([original_p, X_smote_new], axis=0)
 		print("debug, shape of total_P")
 		print(total_P.shape)
 		# combine p and n
