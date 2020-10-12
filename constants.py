@@ -1,15 +1,15 @@
 import os
 
-#########
+########
 #Parameters for selected data set
-#########
-# DATA_DIR = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/UWaveGestureLibrary/'
-# FILE_NAME_TRAIN = 'UWaveGestureLibrary_TRAIN.ts'
-# FILE_NAME_TEST = 'UWaveGestureLibrary_TEST.ts'
-# MINORITY_LABEL = '1.0'
-# DATA_LABEL = 'HandMovementDirection'
-# DOWN_SAMPLE_MINORITY = False
-# MINORITY_DIV = 1
+########
+DATA_DIR = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/UWaveGestureLibrary/'
+FILE_NAME_TRAIN = 'UWaveGestureLibrary_TRAIN.ts'
+FILE_NAME_TEST = 'UWaveGestureLibrary_TEST.ts'
+MINORITY_LABEL = '1.0'
+DATA_LABEL = 'HandMovementDirection'
+DOWN_SAMPLE_MINORITY = False
+MINORITY_DIV = 1
 
 #parameters related to the choice of method and number repeats
 ##########
@@ -44,13 +44,13 @@ PLOT_NAME= ''
 ###########
 #RacketSports
 
-DATA_DIR = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/RacketSports/'
-FILE_NAME_TRAIN = 'RacketSports_TRAIN.ts'
-FILE_NAME_TEST = 'RacketSports_TEST.ts'
-MINORITY_LABEL = 'badminton_clear'
-DATA_LABEL = 'RacketSports'
-DOWN_SAMPLE_MINORITY = False
-MINORITY_DIV = 1
+# DATA_DIR = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/RacketSports/'
+# FILE_NAME_TRAIN = 'RacketSports_TRAIN.ts'
+# FILE_NAME_TEST = 'RacketSports_TEST.ts'
+# MINORITY_LABEL = 'badminton_clear'
+# DATA_LABEL = 'RacketSports'
+# DOWN_SAMPLE_MINORITY = False
+# MINORITY_DIV = 1
 
 
 # EthanolConcentration
@@ -62,9 +62,9 @@ MINORITY_DIV = 1
 # DATA_LABEL = 'EthanolConcentration'
 # DOWN_SAMPLE_MINORITY = True
 # MINORITY_DIV = 3
-
-# FingerMovements
-
+#
+# # FingerMovements
+#
 # DATA_DIR = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/FingerMovements/'
 # FILE_NAME_TRAIN = 'FingerMovements_TRAIN.ts'
 # FILE_NAME_TEST = 'FingerMovements_TEST.ts'

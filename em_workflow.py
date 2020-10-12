@@ -14,6 +14,7 @@ from sklearn.metrics import f1_score
 from sklearn.ensemble import RandomForestClassifier
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling import ADASYN
+from imblearn.under_sampling import TomekLinks
 from sklearn.mixture import GaussianMixture
 
 # import imageio
@@ -71,7 +72,7 @@ class em_workflow(object):
 		train_y_binary = self.convert_y_to_binary_label(train_y)
 
 		# usually the original data has a balanced ratio, in that case, we will downsample the minority
-		if self.down_sample_minority == True:
+		if test_data== False and self.down_sample_minority == True:
 			train_x_to_be_downsample = train_x_expanded[train_y_binary == 1]
 			# calculate the number of samples to keep for minority (we keep 1/3)
 			sample_size = round(train_x_to_be_downsample.shape[0] / self.minority_div)
@@ -231,7 +232,7 @@ class em_workflow(object):
 	# classification workflows for 3 different methods plus no oversampling: EM, 100% adasyn, 100% SMOTE
 	############
 
-	def workflow_no_oversampling(self):
+	def workflow_no_oversampling(self, remove_tomeklinks=False):
 		"""
 		This function performs the workflow of classification without any oversampling
 		:return: f1 score without oversampling
@@ -249,7 +250,14 @@ class em_workflow(object):
 		print("debug, shape of training data:")
 		print(x_res.shape)
 		print(y_res.shape)
-		#
+		if remove_tomeklinks == True:
+			tl = TomekLinks()
+			x_res,y_res = tl.fit_resample(x_res,y_res)
+			print("shape of training data after removing tomek links:")
+			print(x_res.shape)
+			print(y_res.shape)
+		else:
+			pass
 		tmo = self.build_model(x_res, y_res)
 		# evaluates performance
 		x_test, y_test_binary = self.pre_process(test_data=True)
@@ -259,7 +267,7 @@ class em_workflow(object):
 		return f1_score
 
 
-	def workflow_70_inos(self, num_ADASYN, train_p, train_n, new_samples_all_clusters):
+	def workflow_70_inos(self, num_ADASYN, train_p, train_n, new_samples_all_clusters, remove_tomeklinks):
 
 		# format the new samples (transpose it and convert it to pandas dataframe) and concat them
 		new_samples_pd_list = []
@@ -331,6 +339,14 @@ class em_workflow(object):
 		print(x_res.shape)
 		print(y_res.shape)
 		#
+		if remove_tomeklinks == True:
+			tl = TomekLinks()
+			x_res,y_res = tl.fit_resample(x_res,y_res)
+			print("shape of training data after removing tomek links:")
+			print(x_res.shape)
+			print(y_res.shape)
+		else:
+			pass
 		tmo = self.build_model(x_res, y_res)
 		# evaluates performance
 		x_test, y_test_binary = self.pre_process(test_data=True)

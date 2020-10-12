@@ -15,26 +15,13 @@ minority_label = const.MINORITY_LABEL
 data_label = const.DATA_LABEL
 down_sample_minority = const.DOWN_SAMPLE_MINORITY
 minority_div = const.MINORITY_DIV
-##########
-#parameters related to the choice of method and number repeats
-##########
-num_repeats = const.NUM_REPEATS
-###########
-#parameters related to file names
-plot_name = const.PLOT_NAME
-###########
-
+#
 # step 1: create an instance of em_workflow class
 workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file_name_test=file_name_test,
                         minority_label=minority_label, data_label=data_label, down_sample_minority=down_sample_minority,
                         minority_div=minority_div)
-
-# step 2: run classification
-
-f1_score = workflow1.workflow_no_oversampling(remove_tomeklinks=True)
-print("results not removing tomek link")
-print(f1_score)
-#
-# f1_score = workflow1.workflow_no_oversampling(remove_tomeklinks=True)
-# print("results removing tomek link")
-# print(f1_score)
+x_test, y_test_binary = workflow1.pre_process(test_data=True)
+print("positive class shape:")
+print(y_test_binary[y_test_binary==1].shape)
+print("negative class shape:")
+print(y_test_binary[y_test_binary==0].shape)
