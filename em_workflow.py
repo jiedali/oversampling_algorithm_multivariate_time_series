@@ -12,6 +12,7 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling import ADASYN
 from imblearn.under_sampling import TomekLinks
@@ -31,12 +32,15 @@ from sklearn.cluster import KMeans
 
 # import my own library to run em_sampling
 import em_algorithm as em
+
+
 # from em_algorithm import train_gmm_with_covmat_pertubation_and_sample_generation_gmm_init
 
 
 class em_workflow(object):
 
-	def __init__(self, data_dir, file_name_train, file_name_test, minority_label, data_label, down_sample_minority=False, minority_div=1):
+	def __init__(self, data_dir, file_name_train, file_name_test, minority_label, data_label,
+	             down_sample_minority=False, minority_div=1):
 
 		self.data_dir = data_dir
 		self.file_name_train = file_name_train
@@ -45,10 +49,11 @@ class em_workflow(object):
 		self.data_label = data_label
 		self.down_sample_minority = down_sample_minority
 		self.minority_div = minority_div
-		# pre_process() returns the training data in original feature space: n_samples * _features
 
+	# pre_process() returns the training data in original feature space: n_samples * _features
 
 	def pre_process(self, test_data=False):
+		#
 		if test_data == True:
 			train_x, train_y = load_from_tsfile_to_dataframe(os.path.join(self.data_dir, self.file_name_test))
 		elif test_data == False:
@@ -72,7 +77,7 @@ class em_workflow(object):
 		train_y_binary = self.convert_y_to_binary_label(train_y)
 
 		# usually the original data has a balanced ratio, in that case, we will downsample the minority
-		if test_data== False and self.down_sample_minority == True:
+		if test_data == False and self.down_sample_minority == True:
 			train_x_to_be_downsample = train_x_expanded[train_y_binary == 1]
 			# calculate the number of samples to keep for minority (we keep 1/3)
 			sample_size = round(train_x_to_be_downsample.shape[0] / self.minority_div)
@@ -91,14 +96,14 @@ class em_workflow(object):
 
 		return train_x_expanded, train_y_binary
 
-
 	def convert_y_to_binary_label(self, train_y):
 
 		train_y_binary = np.where(train_y == self.minority_label, 1, 0)
 		return train_y_binary
 
 
-	def raw_data_to_eigen_signal_space(self):
+
+	def raw_data_to_eigen_signal_space(self,test_data=False):
 		"""
 		This function will first process the raw data and convert it to algorithm-usable eigen-signal space data
 		In other words, it converts raw data into lower dimensional eigen spectrum space
@@ -109,7 +114,7 @@ class em_workflow(object):
 		                    shape: original_feature_dimensions * eigen_signal_dimensions
 		self.pos_low_d_transposed: minority data chunk in eigen signal space: n_samples * n_eigen_features
 		"""
-		train_x_expanded, train_y_binary = self.pre_process()
+		train_x_expanded, train_y_binary = self.pre_process(test_data=test_data)
 
 		train_x = train_x_expanded
 		train_y_binary = train_y_binary
@@ -169,9 +174,8 @@ class em_workflow(object):
 
 		return train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed
 
-
 	###########
-	#convert samples from eigen signal space to original feature space
+	# convert samples from eigen signal space to original feature space
 	###########
 	# Convert new samples back to original feature space, then do a classification
 	# convert back to original feature space
@@ -186,19 +190,24 @@ class em_workflow(object):
 	## wrap classiciation and evaluation in function
 	from sklearn.ensemble import RandomForestClassifier
 
-	def build_model(self, x_train, y_train):
+	def build_model(self, x_train, y_train, model_name):
 		"""
 		x_train: organized training data, i samples * n features (n is expanded time dimensioon)
 		y_train: labesl of training data
 		"""
 		# run classification use randomforest classifier
-		clf = RandomForestClassifier(n_estimators=100, random_state=0)
-		clf.fit(x_train, y_train)
+		if model_name == 'rf':
+			clf = RandomForestClassifier(n_estimators=100, random_state=0).fit(x_train, y_train)
+
+		elif model_name == 'lr':
+			clf = LogisticRegression(random_state=0,max_iter=1000).fit(x_train, y_train)
+
+		else:
+		# default classification is logistic regression
+			clf = LogisticRegression(random_state=0).fit(x_train, y_train)
 
 		return clf
 
-	## evaluate model performance
-	from sklearn.metrics import confusion_matrix
 
 	def eval_model(self, tmo, x_test, y_test):
 		"""
@@ -209,7 +218,7 @@ class em_workflow(object):
 
 		pred_y = tmo.predict(x_test)
 		# confusion matrix
-		cm = confusion_matrix(y_test, pred_y, labels=[1,0])
+		cm = confusion_matrix(y_test, pred_y, labels=[1, 0])
 		print(cm)
 		#
 		if cm[0][0] == cm[1][0] == 0:
@@ -224,15 +233,13 @@ class em_workflow(object):
 		#
 		print('precision:', precision, 'recall:', recall, 'f1_score:', f1_score, 'accuracy:', acc)
 
-		return f1_score
-
-
+		return f1_score, precision, recall
 
 	############
 	# classification workflows for 3 different methods plus no oversampling: EM, 100% adasyn, 100% SMOTE
 	############
 
-	def workflow_no_oversampling(self, remove_tomeklinks=False):
+	def workflow_no_oversampling(self, remove_tomeklinks, model_name):
 		"""
 		This function performs the workflow of classification without any oversampling
 		:return: f1 score without oversampling
@@ -252,22 +259,21 @@ class em_workflow(object):
 		print(y_res.shape)
 		if remove_tomeklinks == True:
 			tl = TomekLinks()
-			x_res,y_res = tl.fit_resample(x_res,y_res)
+			x_res, y_res = tl.fit_resample(x_res, y_res)
 			print("shape of training data after removing tomek links:")
 			print(x_res.shape)
 			print(y_res.shape)
 		else:
 			pass
-		tmo = self.build_model(x_res, y_res)
+		tmo = self.build_model(x_res, y_res, model_name)
 		# evaluates performance
 		x_test, y_test_binary = self.pre_process(test_data=True)
 		#
-		f1_score = self.eval_model(tmo, x_test, y_test_binary)
+		f1_score, precision, recall = self.eval_model(tmo, x_test, y_test_binary)
 
-		return f1_score
+		return f1_score, precision, recall
 
-
-	def workflow_70_inos(self, num_ADASYN, train_p, train_n, new_samples_all_clusters, remove_tomeklinks):
+	def workflow_70_inos(self, num_ADASYN, train_p, train_n, new_samples_all_clusters, remove_tomeklinks, model_name):
 
 		# format the new samples (transpose it and convert it to pandas dataframe) and concat them
 		new_samples_pd_list = []
@@ -290,7 +296,6 @@ class em_workflow(object):
 
 		# concatenated new samples in shape of n_samples * n_features
 
-
 		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
 
 		inos_p_old = train_x_expanded[train_y_binary == 1]
@@ -301,7 +306,7 @@ class em_workflow(object):
 		# generate 30% ADASYN samples
 		#################################
 		# prepare data to run ADASYN: ADASYN trains on entire original training data
-		X = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
+		X = pd.concat((train_p.transpose(), train_n.transpose()), axis=0)
 		# create y
 		y_p = np.ones(train_p.shape[1])
 		y_n = np.zeros(train_n.shape[1])
@@ -321,7 +326,7 @@ class em_workflow(object):
 			if num_ADASYN >= num_adasyn_samples_generated:
 				X_adasyn = X_res.iloc[starting_index:X_res.shape[0], :]
 			elif num_ADASYN < num_adasyn_samples_generated:
-				X_adasyn = X_res.iloc[starting_index:(starting_index+num_ADASYN)]
+				X_adasyn = X_res.iloc[starting_index:(starting_index + num_ADASYN)]
 			print("debug, X_adasyn shape")
 			print(X_adasyn.shape)
 			############################combine all samples, prepare for training
@@ -335,27 +340,28 @@ class em_workflow(object):
 		y_res_p = np.ones(inos_p.shape[0])
 		y_res_n = np.zeros(inos_n.shape[0])
 		y_res = np.concatenate([y_res_p, y_res_n])
-		print("debug, shape of training data:")
-		print(x_res.shape)
-		print(y_res.shape)
+		# print("debug, shape of training data:")
+		# print(x_res.shape)
+		# print(y_res.shape)
 		#
 		if remove_tomeklinks == True:
 			tl = TomekLinks()
-			x_res,y_res = tl.fit_resample(x_res,y_res)
-			print("shape of training data after removing tomek links:")
-			print(x_res.shape)
-			print(y_res.shape)
+			x_res, y_res = tl.fit_resample(x_res, y_res)
+			# print("shape of training data after removing tomek links:")
+			# print(x_res.shape)
+			# print(y_res.shape)
 		else:
 			pass
-		tmo = self.build_model(x_res, y_res)
+
+		tmo = self.build_model(x_res, y_res, model_name)
 		# evaluates performance
 		x_test, y_test_binary = self.pre_process(test_data=True)
 		#
-		f1_score = self.eval_model(tmo, x_test, y_test_binary)
+		f1_score, precision, recall = self.eval_model(tmo, x_test, y_test_binary)
 
-		return f1_score
+		return f1_score, precision, recall
 
-	def workflow_100_adasyn(self, num_ADASYN, train_p, train_n):
+	def workflow_100_adasyn(self, num_ADASYN, train_p, train_n, model_name):
 
 		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
 
@@ -365,7 +371,7 @@ class em_workflow(object):
 		print(inos_p_old.shape, inos_n.shape)
 		# generate 30% ADASYN samples
 		# prepare data to run ADASYN: ADASYN trains on entire original training data
-		X = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
+		X = pd.concat((train_p.transpose(), train_n.transpose()), axis=0)
 		# create y
 		y_p = np.ones(train_p.shape[1])
 		y_n = np.zeros(train_n.shape[1])
@@ -382,7 +388,7 @@ class em_workflow(object):
 		if num_ADASYN >= num_adasyn_samples_generated:
 			X_adasyn = X_res.iloc[starting_index:X_res.shape[0], :]
 		elif num_ADASYN < num_adasyn_samples_generated:
-			X_adasyn = X_res.iloc[starting_index:(starting_index+num_ADASYN)]
+			X_adasyn = X_res.iloc[starting_index:(starting_index + num_ADASYN)]
 		print("debug, X_adasyn shape")
 		print(X_adasyn.shape)
 		# combine p all clusters
@@ -397,22 +403,21 @@ class em_workflow(object):
 		print(x_res.shape)
 		print(y_res.shape)
 		#
-		tmo = self.build_model(x_res, y_res)
+		tmo = self.build_model(x_res, y_res, model_name)
 		# evaluates performance
 		x_test, y_test_binary = self.pre_process(test_data=True)
 		#
-		f1_score = self.eval_model(tmo, x_test, y_test_binary)
+		f1_score, precision, recall = self.eval_model(tmo, x_test, y_test_binary)
 
-		return f1_score
+		return f1_score, precision, recall
 
-	def workflow_100_smote(self, num_SMOTE, train_p, train_n):
+	def workflow_100_smote(self, num_SMOTE, train_p, train_n, model_name):
 
 		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
 		original_p = train_x_expanded[train_y_binary == 1]
 		original_n = train_x_expanded[train_y_binary == 0]
 
-
-		original_P_N = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
+		original_P_N = pd.concat((train_p.transpose(), train_n.transpose()), axis=0)
 		# create y
 		y_p = np.ones(train_p.shape[1])
 		y_n = np.zeros(train_n.shape[1])
@@ -425,7 +430,7 @@ class em_workflow(object):
 		X_smote, y_smote = sm.fit_resample(original_P_N, y)
 		starting_index = train_p.shape[1] + train_n.shape[1]
 		#
-		X_smote_new =X_smote.iloc[starting_index:X_smote.shape[0],:]
+		X_smote_new = X_smote.iloc[starting_index:X_smote.shape[0], :]
 		total_P = pd.concat([original_p, X_smote_new], axis=0)
 		print("debug, shape of total_P")
 		print(total_P.shape)
@@ -435,15 +440,36 @@ class em_workflow(object):
 		y_res_n = np.zeros(original_n.shape[0])
 		y_res = np.concatenate([y_res_p, y_res_n])
 		#
-		tmo = self.build_model(total_P_N, y_res)
+		tmo = self.build_model(total_P_N, y_res, model_name)
 		# evaluates performance
 		x_test, y_test_binary = self.pre_process(test_data=True)
 		#
-		f1_score = self.eval_model(tmo, x_test, y_test_binary)
+		f1_score, precision, recall = self.eval_model(tmo, x_test, y_test_binary)
 
-		return f1_score
+		return f1_score, precision, recall
 
+	def create_smote_samples(self, num_SMOTE, train_p, train_n):
 
+		train_x_expanded, train_y_binary = self.pre_process(test_data=False)
+		original_p = train_x_expanded[train_y_binary == 1]
+		original_n = train_x_expanded[train_y_binary == 0]
+
+		original_P_N = pd.concat((train_p.transpose(), train_n.transpose()), axis=0)
+		# create y
+		y_p = np.ones(train_p.shape[1])
+		y_n = np.zeros(train_n.shape[1])
+		y = np.concatenate((y_p, y_n))
+		# input: original_P_N: n_samples * n_features, original data set including P and N
+		# input: y: corresponding lables for original data set
+		# SMOTE
+		sm = SMOTE(sampling_strategy=1)
+		# x_res included both original and SMOTE synthesized data
+		x_smote, y_smote = sm.fit_resample(original_P_N, y)
+		starting_index = train_p.shape[1] + train_n.shape[1]
+		#
+		x_smote_new = x_smote.iloc[starting_index:x_smote.shape[0], :]
+
+		return x_smote_new
 
 	def create_adasyn_samples(self, num_ADASYN, train_p, train_n):
 
@@ -453,7 +479,7 @@ class em_workflow(object):
 		# inos_n = train_x_expanded[train_y_binary == 0]
 		# generate 30% ADASYN samples
 		# prepare data to run ADASYN: ADASYN trains on entire original training data
-		X = pd.concat((train_p.transpose(),train_n.transpose()), axis=0)
+		X = pd.concat((train_p.transpose(), train_n.transpose()), axis=0)
 		# create y
 		y_p = np.ones(train_p.shape[1])
 		y_n = np.zeros(train_n.shape[1])
@@ -473,11 +499,3 @@ class em_workflow(object):
 		print(X_adasyn.shape)
 
 		return X_adasyn
-
-
-
-
-
-
-
-

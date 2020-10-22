@@ -11,13 +11,6 @@ DATA_LABEL = 'HandMovementDirection'
 DOWN_SAMPLE_MINORITY = False
 MINORITY_DIV = 1
 
-#parameters related to the choice of method and number repeats
-##########
-NUM_REPEATS = 1
-###########
-#parameters related to file names
-PLOT_NAME= ''
-###########
 
 # ##########
 # # Parameters for selected data set
@@ -30,13 +23,7 @@ PLOT_NAME= ''
 # DOWN_SAMPLE_MINORITY = True
 # MINORITY_DIV = 3
 # ##########
-# #parameters related to the choice of method and number repeats
-# ##########
-# NUM_REPEATS = 1
-# ###########
-# #parameters related to file names
-# PLOT_NAME= ''
-# ###########
+
 
 
 ###########
@@ -49,8 +36,8 @@ PLOT_NAME= ''
 # FILE_NAME_TEST = 'RacketSports_TEST.ts'
 # MINORITY_LABEL = 'badminton_clear'
 # DATA_LABEL = 'RacketSports'
-# DOWN_SAMPLE_MINORITY = False
-# MINORITY_DIV = 1
+# DOWN_SAMPLE_MINORITY = True
+# MINORITY_DIV = 4
 
 
 # EthanolConcentration
@@ -63,8 +50,8 @@ PLOT_NAME= ''
 # DOWN_SAMPLE_MINORITY = True
 # MINORITY_DIV = 3
 #
-# # FingerMovements
-#
+# FingerMovements
+
 # DATA_DIR = '/Users/jiedali/Documents/research/dataset/Multivariate_ts/FingerMovements/'
 # FILE_NAME_TRAIN = 'FingerMovements_TRAIN.ts'
 # FILE_NAME_TEST = 'FingerMovements_TEST.ts'

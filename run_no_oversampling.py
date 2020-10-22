@@ -4,6 +4,7 @@ from em_algorithm import *
 import statistics
 from visualization import visualize
 import constants as const
+from helper import get_mean_max_f1score
 
 ##########
 # Parameters for selected data set
@@ -30,10 +31,24 @@ workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file
                         minority_div=minority_div)
 
 # step 2: run classification
+f1_score_list=[]
+precision_list=[]
+recall_list=[]
 
-f1_score = workflow1.workflow_no_oversampling(remove_tomeklinks=True)
-print("results not removing tomek link")
-print(f1_score)
+for i in range(10):
+	f1_score, precision, recall = workflow1.workflow_no_oversampling(remove_tomeklinks=True)
+	f1_score_list.append(f1_score)
+	precision_list.append(precision)
+	recall_list.append(recall)
+
+print(f1_score_list)
+print(precision_list)
+print(recall_list)
+print("==============No oversampling========")
+print("mean max of f1, precision and recall")
+print(get_mean_max_f1score(f1_score_list))
+print(get_mean_max_f1score(precision_list))
+print(get_mean_max_f1score(recall_list))
 #
 # f1_score = workflow1.workflow_no_oversampling(remove_tomeklinks=True)
 # print("results removing tomek link")

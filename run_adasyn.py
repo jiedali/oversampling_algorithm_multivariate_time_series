@@ -4,6 +4,7 @@ from em_algorithm import *
 import statistics
 from visualization import visualize
 import constants as const
+from helper import get_mean_max_f1score
 ##########
 # Parameters for selected data set
 ##########
@@ -38,12 +39,20 @@ print("Number of adasyn samples to generate: %d" % num_new_samples_to_gen)
 # train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
 
 
-f1_socre_list=[]
-for i in range(1):
+f1_score_list=[]
+precision_list=[]
+recall_list=[]
+for i in range(10):
 
-	f1_score = workflow1.workflow_100_adasyn(num_ADASYN=num_new_samples_to_gen, train_p=train_p, train_n=train_n)
-	f1_socre_list.append(f1_score)
+	f1_score, precision, recall = workflow1.workflow_100_adasyn(num_ADASYN=num_new_samples_to_gen, train_p=train_p, train_n=train_n)
+	f1_score_list.append(f1_score)
+	precision_list.append(precision)
+	recall_list.append(recall)
 
-print(f1_socre_list)
-print("mean f1_score: %d" % statistics.mean(f1_socre_list))
-print("max f1_score: %d" % max(f1_socre_list))
+print(f1_score_list)
+print(precision_list)
+print(recall_list)
+print("mean max of f1, precision and recall")
+print(get_mean_max_f1score(f1_score_list))
+print(get_mean_max_f1score(precision_list))
+print(get_mean_max_f1score(recall_list))

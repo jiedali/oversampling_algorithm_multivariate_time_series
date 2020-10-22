@@ -13,8 +13,8 @@ f1_mean_max = [(0.28832252199125263, 0.47619047619047616),
 f1_mean = [i[0] for i in f1_mean_max]
 f1_max = [i[1] for i in f1_mean_max]
 
-plt.plot(ada_perc,f1_mean,'b*',label='average_F1_score (from 10 runs)')
-plt.plot(ada_perc,f1_max, 'g*',label='max_F1_score (from 10 runs)')
+plt.plot(ada_perc,f1_mean,'b-',label='average_F1_score (from 10 runs)')
+plt.plot(ada_perc,f1_max, 'g-',label='max_F1_score (from 10 runs)')
 plt.ylim(top=0.6,bottom=0)
 plt.ylabel('F1_score')
 plt.xlabel('percentage of Adasyn samples')
