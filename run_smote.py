@@ -17,14 +17,7 @@ minority_label = const.MINORITY_LABEL
 data_label = const.DATA_LABEL
 down_sample_minority = const.DOWN_SAMPLE_MINORITY
 minority_div = const.MINORITY_DIV
-##########
-#parameters related to the choice of method and number repeats
-##########
-num_repeats = const.NUM_REPEATS
-###########
-#parameters related to file names
-plot_name = const.PLOT_NAME
-###########
+#
 
 # step 1: create an instance of em_workflow class
 workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file_name_test=file_name_test,
@@ -40,14 +33,15 @@ num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
 print("debug, train_p shape")
 print(train_p.shape)
 print(train_n.shape)
+print("number of new samples to generate: %d" % num_new_samples_to_gen)
 
 f1_score_list=[]
 precision_list=[]
 recall_list=[]
-for i in range(10):
+for i in range(1):
 
 	f1_score, precision, recall = workflow1.workflow_100_smote(num_SMOTE=num_new_samples_to_gen, \
-	                                                           train_p=train_p, train_n=train_n, model_name='lr')
+	                                                           train_p=train_p, train_n=train_n, model_name='svm')
 	f1_score_list.append(f1_score)
 	precision_list.append(precision)
 	recall_list.append(recall)

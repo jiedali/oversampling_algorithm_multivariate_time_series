@@ -326,9 +326,14 @@ def to_eigen_signal_space_per_cluster(train_p, train_n):
 	cov_mat = (sum_p + sum_n) / (P + N)
 	# eigen decomposition of covariance matrix
 	w, v = np.linalg.eig(cov_mat)
-	null_index = np.where(w < 5e-5)
-	null_index = null_index[0][0]
 	#
+	null_index_array = np.where(w < 5e-5)
+	if len(null_index_array[0] > 0):
+		null_index = null_index_array[0][0]
+	elif len(null_index_array[0]) == 0:
+		print("there is no eigen value less than 5e-5")
+		# null index should be the same as the index of last column of v
+		null_index = v.shape[1]
 	# separate the eigen vectors into signal space and null space
 	eigen_signal = v[:, 0:null_index]
 	# transform all samples into the lower dimensional eigen signal space
