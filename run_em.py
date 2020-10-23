@@ -31,9 +31,9 @@ workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file
 #
 # train_x_expanded, train_y_binary = workflow1.pre_process()
 train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
-
-
-n_clusters = 2
+#
+model_name = 'xgb'
+n_clusters = 1
 n_epochs = 2
 f1_mean_list=[]
 f1_max_list=[]
@@ -47,12 +47,12 @@ for adasyn_percentage in [0.3]:
 	f1_score_list=[]
 	precision_list=[]
 	recall_list=[]
-	for i in range(2):
+	for i in range(10):
 		clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, new_samples_all_clusters = \
 			train_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
 
 		f1_score, precision, recall = workflow1.workflow_70_inos(num_ADASYN=num_adasyn_samples, train_p=train_p, train_n=train_n,\
-		                                                         new_samples_all_clusters=new_samples_all_clusters, remove_tomeklinks=False, model_name='lr')
+		                                                         new_samples_all_clusters=new_samples_all_clusters, remove_tomeklinks=False, model_name=model_name)
 		f1_score_list.append(f1_score)
 		precision_list.append(precision)
 		recall_list.append(recall)

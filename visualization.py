@@ -168,8 +168,6 @@ def plot_smote(ts_neg_low_d, ts_pos_low_d, X_smote, eigen_signal, file_name):
 
 
 
-
-
 if __name__ == "__main__":
 
 	# visualize
@@ -183,13 +181,6 @@ if __name__ == "__main__":
 	data_label = const.DATA_LABEL
 	down_sample_minority = const.DOWN_SAMPLE_MINORITY
 	minority_div = const.MINORITY_DIV
-	##########
-	# parameters related to the choice of method and number repeats
-	##########
-	num_repeats = const.NUM_REPEATS
-	###########
-	# parameters related to file names
-	plot_name = const.PLOT_NAME
 	###########
 	# step 1: create an instance of em_workflow class
 	workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file_name_test=file_name_test,
@@ -208,7 +199,7 @@ if __name__ == "__main__":
 	#
 	# #
 	# plot_ground_truth_plus_test(neg_low_d_transposed, pos_low_d_transposed, test_x_eigen_pos, test_x_eigen_neg, 'RackeSports_original_plus_test.png')
-	# plot_ground_truth(neg_low_d_transposed, pos_low_d_transposed, 'RackeSports_original_imbalance.png')
+	plot_ground_truth(neg_low_d_transposed, pos_low_d_transposed, 'phoneme_original_imbalance.png')
 	#
 	# plot adasyn
 	# X_adasyn = workflow1.create_adasyn_samples(num_ADASYN=90,train_p=train_p,train_n=train_n)
@@ -217,15 +208,15 @@ if __name__ == "__main__":
 	# x_smote = workflow1.create_smote_samples(num_SMOTE=97,train_p=train_p,train_n=train_n)
 	# plot_smote(neg_low_d_transposed, pos_low_d_transposed, x_smote, eigen_signal, 'smote_samples_racketsports.png')
 	# #
-	n_clusters=2
-	n_epochs=2
-	clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, new_samples_all_clusters= \
-		train_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, 90, eigen_signal)
-	#
-	total_new_samples_c0 = new_samples_all_clusters[0]
-	total_new_samples_c1 = new_samples_all_clusters[1]
-	#
-	visualize(neg_low_d_transposed, pos_low_d_transposed, eigen_signal, total_new_samples_c0, total_new_samples_c1,'racketsports_original_plus_em')
+	# n_clusters=2
+	# n_epochs=2
+	# clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, new_samples_all_clusters= \
+	# 	train_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, 90, eigen_signal)
+	# #
+	# total_new_samples_c0 = new_samples_all_clusters[0]
+	# total_new_samples_c1 = new_samples_all_clusters[1]
+	# #
+	# visualize(neg_low_d_transposed, pos_low_d_transposed, eigen_signal, total_new_samples_c0, total_new_samples_c1,'racketsports_original_plus_em')
 
 	# # plot_ground_truth(neg_low_d_transposed,pos_low_d_transposed,'1to10_imblance_FingerMovements.png')
 	# visualize_one_cluster(neg_low_d_transposed,pos_low_d_transposed,eigen_signal,total_new_samples_c0,'em_samples_FingerMovements_1_cluster.png')

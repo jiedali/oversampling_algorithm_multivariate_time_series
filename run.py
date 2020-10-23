@@ -17,7 +17,6 @@ down_sample_minority = const.DOWN_SAMPLE_MINORITY
 minority_div = const.MINORITY_DIV
 
 
-
 # step 1: create an instance of em_workflow class
 workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file_name_test=file_name_test,
                         minority_label=minority_label, data_label=data_label, down_sample_minority=down_sample_minority,
@@ -27,7 +26,7 @@ workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file
 train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
 
 #
-model_name = 'lr'
+model_name = 'xgb'
 number_of_repeats = 10
 
 
@@ -41,7 +40,7 @@ num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
 #
 num_em_samples = round(num_new_samples_to_gen*(1-adasyn_percentage))
 num_adasyn_samples = round(num_new_samples_to_gen*adasyn_percentage)
-# print("Number of samples to gen for em and adasyn %d, %d" %(num_em_samples, num_adasyn_samples))
+print("Number of samples to gen for em and adasyn %d, %d" %(num_em_samples, num_adasyn_samples))
 # f1_score_list=[]
 # precision_list=[]
 # recall_list=[]

@@ -160,9 +160,18 @@ class em_workflow(object):
 		cov_mat = (sum_p + sum_n) / (P + N)
 		# eigen decomposition of covariance matrix
 		w, v = np.linalg.eig(cov_mat)
-		null_index = np.where(w < 5e-5)
-		null_index = null_index[0][0]
-		#
+		print("debug, shape of v is:")
+		print(v.shape)
+		print(v.shape[1])
+		null_index_array = np.where(w < 5e-5)
+		if len(null_index_array[0]>0):
+			null_index = null_index_array[0][0]
+		elif len(null_index_array[0])==0:
+			print("there is no eigen value less than 5e-5")
+			# null index should be the same as the index of last column of v
+			null_index = v.shape[1]
+		# print("debug, null_index is")
+		# print(null_index)
 		# separate the eigen vectors into signal space and null space
 		# so signal space would be eigenvecotrs 0~19, null space would be eigenvectors 20~63
 		eigen_signal = v[:, 0:null_index]
@@ -202,7 +211,7 @@ class em_workflow(object):
 			clf = RandomForestClassifier(n_estimators=100, random_state=0).fit(x_train, y_train)
 
 		elif model_name == 'lr':
-			clf = LogisticRegression(random_state=0,max_iter=1000).fit(x_train, y_train)
+			clf = LogisticRegression(random_state=0,max_iter=10000).fit(x_train, y_train)
 
 		elif model_name == 'svm':
 			clf = SVC(kernel='rbf',gamma='auto').fit(x_train, y_train)
@@ -323,7 +332,7 @@ class em_workflow(object):
 
 		if num_ADASYN != 0:
 
-			ada = ADASYN(sampling_strategy=1.0, n_neighbors=5)
+			ada = ADASYN(sampling_strategy=1.0, n_neighbors=3)
 			# X contains all data, should be in format of n_samples*n_features
 			X_res, y_res = ada.fit_resample(X, y)
 			# In X_res, the first segment is original minority class samples, 2nd segment is original majority class samples
@@ -432,7 +441,7 @@ class em_workflow(object):
 		# input: original_P_N: n_samples * n_features, original data set including P and N
 		# input: y: corresponding lables for original data set
 		# SMOTE
-		sm = SMOTE(sampling_strategy=1)
+		sm = SMOTE(sampling_strategy=1,k_neighbors=3)
 		# x_res included both original and SMOTE synthesized data
 		X_smote, y_smote = sm.fit_resample(original_P_N, y)
 		starting_index = train_p.shape[1] + train_n.shape[1]
