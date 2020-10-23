@@ -13,6 +13,8 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling import ADASYN
 from imblearn.under_sampling import TomekLinks
@@ -202,6 +204,11 @@ class em_workflow(object):
 		elif model_name == 'lr':
 			clf = LogisticRegression(random_state=0,max_iter=1000).fit(x_train, y_train)
 
+		elif model_name == 'svm':
+			clf = SVC(kernel='rbf',gamma='auto').fit(x_train, y_train)
+
+		elif model_name == 'xgb':
+			clf = XGBClassifier().fit(x_train,y_train)
 		else:
 		# default classification is logistic regression
 			clf = LogisticRegression(random_state=0).fit(x_train, y_train)
