@@ -4,6 +4,8 @@ from em_algorithm import *
 import statistics
 from visualization import visualize
 import constants as const
+from helper import get_mean_max_f1score
+
 
 ##########
 # Parameters for selected data set
@@ -32,13 +34,32 @@ workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file
 # train_x_expanded, train_y_binary = workflow1.pre_process()
 train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
 
+# input shape for train_p is n_features * n_samples
+num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
 
-f1_socre_list=[]
+print("debug, train_p shape")
+print(train_p.shape)
+print(train_n.shape)
+
+f1_score_list=[]
+precision_list=[]
+recall_list=[]
 for i in range(10):
 
-	f1_score = workflow1.workflow_100_smote(num_SMOTE=140, train_p=train_p, train_n=train_n)
-	f1_socre_list.append(f1_score)
+	f1_score, precision, recall = workflow1.workflow_100_smote(num_SMOTE=num_new_samples_to_gen, \
+	                                                           train_p=train_p, train_n=train_n, model_name='lr')
+	f1_score_list.append(f1_score)
+	precision_list.append(precision)
+	recall_list.append(recall)
 
-print(f1_socre_list)
-print("mean f1_score: %d" % statistics.mean(f1_socre_list))
-print("max f1_score: %d" % max(f1_socre_list))
+
+print(f1_score_list)
+print(precision_list)
+print(recall_list)
+print("mean max of f1, precision and recall")
+print(get_mean_max_f1score(f1_score_list))
+print(get_mean_max_f1score(precision_list))
+print(get_mean_max_f1score(recall_list))
+
+
+
