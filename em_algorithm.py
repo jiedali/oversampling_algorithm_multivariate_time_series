@@ -83,14 +83,12 @@ def train_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, eigen_
 		if i != 0:
 			new_samples_all_clusters = generate_new_samples_regu_eigen(clusters, num_new_samples, results, X,
 			                                                                 train_n, eigen_signal_overall)
-
 			# if i == 1:
 			# 	total_new_samples_c0 = new_samples_c0
 			# 	total_new_samples_c1 = new_samples_c1
 			# # else:
 			# # 	total_new_samples_c0 = np.vstack((total_new_samples_c0, new_samples_c0))
 			# # 	total_new_samples_c1 = np.vstack((total_new_samples_c1, new_samples_c1))
-
 		#
 		expectation_step(X, clusters, epsilon)
 		#
@@ -173,8 +171,8 @@ def reg_eigen_spectrum(cov_pos):
 	w_pos, v_pos = np.linalg.eig(cov_pos)
 	#
 	w_pos = np.real(w_pos)
-	print("debug, w_pos:")
-	print(w_pos)
+	# print("debug, w_pos:")
+	# print(w_pos)
 	#
 	M = np.where(w_pos < 5e-5)
 	#
@@ -219,10 +217,10 @@ def draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n):
 	# draw samples
 	for i in range(0, n_samples):
 		x_eigen_space = draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M)
-		print("new sample in eigen space:", x_eigen_space.shape)
+		# print("new sample in eigen space:", x_eigen_space.shape)
 		x = np.dot(eigen_signal, x_eigen_space.transpose())
 		x = np.real(x.transpose())
-		print("new sample in original feature space:", x.shape)
+		# print("new sample in original feature space:", x.shape)
 		if i == 0:
 			new_samples = x
 		else:
@@ -288,16 +286,16 @@ def to_eigen_signal_space_per_cluster(train_p, train_n):
 	###############
 	# ts_pos shape: n_features * n_samples
 	###############
-	print("debug before doing per cluster conversion from original feature space to eigen:")
-	print(train_p.shape)
-	print(train_n.shape)
+	# print("debug before doing per cluster conversion from original feature space to eigen:")
+	# print(train_p.shape)
+	# print(train_n.shape)
 	ts_pos = train_p
 	ts_neg = train_n
 	# first compute x_bar
 	sum_ts_n = np.sum(ts_neg, axis=1)
 	sum_ts_p = np.sum(ts_pos, axis=1)
-	print("debug,shape of sum_ts_n")
-	print(sum_ts_n.shape)
+	# print("debug,shape of sum_ts_n")
+	# print(sum_ts_n.shape)
 	#
 	n_samples = ts_pos.shape[1] + ts_neg.shape[1]
 	#
@@ -377,12 +375,12 @@ def generate_new_samples_regu_eigen(clusters, num_new_samples, results, train_p,
 
 	# now draw samples (number of new samples given in above calculation)
 	# draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n)
-	print("debug: shape of train_p , train_n, train_p_original_feature_space, train_n_original_feature_space")
-	print(train_p.shape)
-	print(train_n.shape)
-	print(train_p_original_feature_space.shape)
-	print(train_n_original_feature_space.shape)
-	print(train_p_original_feature_space)
+	# print("debug: shape of train_p , train_n, train_p_original_feature_space, train_n_original_feature_space")
+	# print(train_p.shape)
+	# print(train_n.shape)
+	# print(train_p_original_feature_space.shape)
+	# print(train_n_original_feature_space.shape)
+	# print(train_p_original_feature_space)
 
 	# initialize some lists used to store parameters/results related to multi modes
 	num_new_samples_all_clusters = []
