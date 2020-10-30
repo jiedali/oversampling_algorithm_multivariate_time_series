@@ -20,16 +20,12 @@ workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file
                         minority_div=minority_div)
 # train_x_expanded, train_y_binary = workflow1.pre_process()
 train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
-#
 #===================
-#
 n_clusters = 2
-n_epochs = 2
+n_epochs = 5
 num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
 num_em_samples = num_new_samples_to_gen
+clusters, likelihoods, sample_likelihoods, history, new_samples_all_clusters = train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
 
-# clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, new_samples_all_clusters = \
+# clusters, results = \
 # 	train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
-
-clusters, results = \
-	train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)

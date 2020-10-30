@@ -27,59 +27,80 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	new_samples_all_clusters: a LIST of numpy array, each being the new samples for each cluster;
 	For each cluster, the numpy array has a shape of: n_samples * n_features
 	"""
-	clusters, results = initialize_clusters_with_gmm_results(X, n_clusters, train_n, eigen_signal_overall)
-
-
-	return clusters, results
-
-	# # return the clustering membership
+	clusters, results_orig_p_clustering, results_combined_clustering, new_samples_c0, new_samples_c1 = \
+		initialize_clusters_with_gmm_results(X, n_clusters, train_n, eigen_signal_overall)
+	# return the clustering membership
 	# clustering_results = results
-	# likelihoods = np.zeros((n_epochs,))
-	# scores = np.zeros((X.shape[0], n_clusters))
-	# history = []
+	likelihoods = np.zeros((n_epochs,))
+	scores = np.zeros((X.shape[0], n_clusters))
+	history = []
 	#
-	# for i in range(n_epochs):
+	print("finished initialization!!!")
+	num_new_samples_purge = round(0.02*num_new_samples)
+	print("number of new samples for purge: %d" % num_new_samples_purge)
+	# new_samples_purge, sample_cnt_cluster = generate_new_samples_regu_eigen(clusters,num_new_samples_purge, results_orig_p_clustering, X, train_n, eigen_signal_overall)
+	# new_samples_purge_0 = new_samples_purge[0]
+	# new_samples_purge_1 = new_samples_purge[1]
 	#
-	# 	# print('Pi_k at the beginning of %d iteration' % i)
-	# 	# print('cluster0', clusters[0]['pi_k'])
-	# 	# print('cluster1', clusters[1]['pi_k'])
-	# 	clusters_snapshot = []
+	# # convert to eigen space
+	# new_samples_purge_0_eigen = np.real(np.dot(new_samples_purge_0,eigen_signal_overall))
+	# new_samples_purge_1_eigen = np.real(np.dot(new_samples_purge_1,eigen_signal_overall))
 	#
-	# 	# This is just for our later use in the graphs
-	# 	for cluster in clusters:
-	# 		clusters_snapshot.append({
-	# 			'mu_k': cluster['mu_k'].copy(),
-	# 			'cov_k': cluster['cov_k'].copy()
-	# 		})
-	#
-	# 	history.append(clusters_snapshot)
-	#
-	# 	# generate new samples
-	# 	# first get the target number of samples to be generated for each cluster
-	# 	# new_samples_c0, new_samples_c1 = generate_new_samples(clusters)
-	# 	if i != 0:
-	# 		new_samples_all_clusters = generate_new_samples_regu_eigen(clusters, num_new_samples, results, X,
-	# 		                                                           train_n, eigen_signal_overall)
-	# 	# if i == 1:
-	# 	# 	total_new_samples_c0 = new_samples_c0
-	# 	# 	total_new_samples_c1 = new_samples_c1
-	# 	# # else:
-	# 	# # 	total_new_samples_c0 = np.vstack((total_new_samples_c0, new_samples_c0))
-	# 	# # 	total_new_samples_c1 = np.vstack((total_new_samples_c1, new_samples_c1))
-	# 	#
-	# 	expectation_step(X, clusters, epsilon)
-	# 	#
-	# 	maximization_step(X, clusters)
-	# 	#
-	# 	likelihood, sample_likelihoods = get_likelihood(X, clusters)
-	# 	likelihoods[i] = likelihood
-	#
-	# 	print('Epoch: ', i + 1, 'Likelihood: ', likelihood)
-	#
+	# # swap the oldest 10% syntheiszed data with the newly generated data
+	# new_samples_c0[0:sample_cnt_cluster[0],:] = new_samples_purge_0_eigen
+	# new_samples_c1[0:sample_cnt_cluster[1],:] = new_samples_purge_1_eigen
+	# print("debug, shape of new_samples_c0 before purge")
+	# print(new_samples_c0.shape)
+	# print("debug, shape of new_sample_purge_0_eigen")
+	# print(new_samples_purge_0_eigen.shape)
+	# print("debug, shape of new_samples_c0 after purger")
+	# print(new_samples_c0.shape)
+
+	combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
+
+	for i in range(n_epochs):
+
+		# print('Pi_k at the beginning of %d iteration' % i)
+		# print('cluster0', clusters[0]['pi_k'])
+		# print('cluster1', clusters[1]['pi_k'])
+		clusters_snapshot = []
+
+		# This is just for our later use in the graphs
+		for cluster in clusters:
+			clusters_snapshot.append({
+				'mu_k': cluster['mu_k'].copy(),
+				'cov_k': cluster['cov_k'].copy()
+			})
+
+		history.append(clusters_snapshot)
+
+		# generate new samples
+		# first get the target number of samples to be generated for each cluster
+		# new_samples_c0, new_samples_c1 = generate_new_samples(clusters)
+		# if i != 0:
+		# 	new_samples_all_clusters = generate_new_samples_regu_eigen(clusters, num_new_samples, results, X,
+		# 	                                                           train_n, eigen_signal_overall)
+		# generate 20% of total synthesized data
+		# num_new_samples_purge = round(0.2*num_new_samples)
+
+		#
+		print("debug, clusters[0]['mu_k']")
+		print(clusters[0]['mu_k'])
+		expectation_step(combined_X, clusters, epsilon)
+		#
+		maximization_step(combined_X, clusters)
+		#
+		likelihood, sample_likelihoods = get_likelihood(combined_X, clusters)
+		likelihoods[i] = likelihood
+
+		print('Epoch: ', i + 1, 'Likelihood: ', likelihood)
+
 	# for i, cluster in enumerate(clusters):
-	# 	scores[:, i] = np.log(cluster['gamma_nk']).reshape(-1)
-	#
-	# return clusters, clustering_results, likelihoods, scores, sample_likelihoods, history, new_samples_all_clusters
+	# scores[:, i] = np.log(cluster['gamma_nk']).reshape(-1)
+
+	return clusters, likelihoods, sample_likelihoods, history, combined_X
+	# return clusters, likelihoods, sample_likelihoods, history
+
 #################
 # initialize clusters
 # initialization step 1: do GMM based on existing minority samples
@@ -97,10 +118,10 @@ def initialize_clusters_with_gmm_results(X, n_clusters, train_n, eigen_signal_ov
 
 	# Step 1: do GMM based on existing minority samples
 	gmm = GaussianMixture(n_components=n_clusters, covariance_type='full')
-	results = gmm.fit_predict(X)
+	results_orig_p_clustering = gmm.fit_predict(X)
 	#
 	print("Show GMM initialization based on original minority samples:")
-	print(results)
+	print(results_orig_p_clustering)
 	#
 	mu_k = gmm.means_
 	cov_mat = gmm.covariances_
@@ -113,40 +134,47 @@ def initialize_clusters_with_gmm_results(X, n_clusters, train_n, eigen_signal_ov
 		})
 	# step 2: draw new samples
 	num_new_samples = train_n.shape[0]-X.shape[0]
-	new_samples = generate_new_samples_regu_eigen(clusters,num_new_samples,results,X,train_n,eigen_signal_overall)
-	print("debug, shape of new_samples[0]")
-	print(new_samples[0].shape)
+	new_samples, num_new_samples_all_clusters = generate_new_samples_regu_eigen(clusters,num_new_samples,results_orig_p_clustering,X,train_n,eigen_signal_overall)
+
 
 	# convert new_samples to eigen space
+	print("new samples c0 before converting:")
+	print(new_samples[0])
 	new_samples_c0= np.real(np.dot(new_samples[0],eigen_signal_overall))
 	print("debug, shape of new samples c0 in eigen:")
 	print(new_samples_c0.shape)
+	print(new_samples_c0)
 
+	print("new samples c1 before converting:")
+	print(new_samples[1])
 	new_samples_c1= np.real(np.dot(new_samples[1],eigen_signal_overall))
 	print("debug, shape of new samples c1 in eigen:")
 	print(new_samples_c1.shape)
+	print(new_samples_c1)
 
 
 	# step 3: do GMM on combined original samples + new synthesized samples
 	combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
 	print("debug, shape of combined samples")
 	print(combined_X.shape)
-	results = gmm.fit_predict(combined_X)
+	print("debug, value of combined_X")
+	print(combined_X)
+	print("deubg, type of combined_X")
+	print(type(combined_X))
+	results_combined_clustering = gmm.fit_predict(combined_X)
 
 	# last step: update the GMM parameters in clusters
 	mu_k = gmm.means_
 	cov_mat = gmm.covariances_
 
-	for i in range(n_clusters):
-		clusters.append({
-			'pi_k': 1.0 / n_clusters,
-			'mu_k': mu_k[i],
-			'cov_k': cov_mat[i]
-		})
+	# update gmm mean and covariance
+	for j,cluster in enumerate(clusters):
+		cluster['mu_k'] = mu_k[j]
+		cluster['cov_k'] = cov_mat[j]
 	print("Show GMM initialization based on combined minority and synthesized samples:")
-	print(results)
+	print(results_combined_clustering)
 
-	return clusters, results
+	return clusters, results_orig_p_clustering, results_combined_clustering, new_samples_c0, new_samples_c1
 
 
 ##################
@@ -189,6 +217,8 @@ def generate_new_samples_regu_eigen(clusters, num_new_samples, results, train_p,
 	train_p_original_feature_all_clusters = []
 	new_samples_original_feature_all_clusters = []
 
+	print("debug: show variable clusters")
+	print(clusters)
 	for cluster_index in range(len(clusters)):
 		# get number of new samples to generate for each cluster
 		num_new_sample_per_cluster = round(num_new_samples * clusters[cluster_index]['pi_k'])
@@ -217,7 +247,7 @@ def generate_new_samples_regu_eigen(clusters, num_new_samples, results, train_p,
 	print("Number of new samples to be generated for c0 and c1:")
 	print(num_new_samples_all_clusters)
 
-	return new_samples_original_feature_all_clusters
+	return new_samples_original_feature_all_clusters, num_new_samples_all_clusters
 
 
 # baseline function to draw samples from multivariate gaussian
@@ -244,11 +274,8 @@ def draw_samples_regu_eigen_wrapper(n_samples, train_p, train_n):
 	# draw samples
 	for i in range(0, n_samples):
 		x_eigen_space = draw_samples_eigen_regu(q1_bar, v_pos, regu_eigen_values, M)
-		print("debug, new sample shape")
-		# print("new sample in eigen space:", x_eigen_space.shape)
 		x = np.dot(eigen_signal, x_eigen_space.transpose())
 		x = np.real(x.transpose())
-		# print("new sample in original feature space:", x.shape)
 		if i == 0:
 			new_samples = x
 		else:
@@ -446,8 +473,9 @@ def expectation_step(X, clusters, epsilon):
 		#         print(mu_k.shape)
 		#
 		gamma_nk = (pi_k * gaussian(total_X, mu_k, cov_k_modified)).reshape(total_X.shape[0], 1)
-		#         print("Debug: inside expectation_step: value of gamma_nk")
-		#         print(gamma_nk)
+		print("Debug: inside expectation_step: value of gamma_nk")
+		print(gamma_nk)
+
 		#         print("Debug: size of gamma_nk")
 		#         print(gamma_nk.shape)
 
