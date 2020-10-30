@@ -36,33 +36,41 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	history = []
 	#
 	print("finished initialization!!!")
-	num_new_samples_purge = round(0.02*num_new_samples)
+	num_new_samples_purge = round(0.1*num_new_samples)
 	print("number of new samples for purge: %d" % num_new_samples_purge)
+	# purge new samples to be generated from MVG mean and covariance given by maximization results
+	new_samples_list=[]
+	for i,cluster in enumerate(clusters):
+		# replace 20% of samples
+		n_samples = round(0.2*cluster['pi_k']*num_new_samples)
+		new_samples_per_cluster = draw_samples_from_mvg(n_samples,cluster)
+		new_samples_list.append(new_samples_per_cluster)
+
+	new_samples_purge_0 = new_samples_list[0]
+	new_samples_purge_1 = new_samples_list[1]
+
+	purge_0_eigen = np.real(new_samples_purge_0)
+	purge_1_eigen = np.real(new_samples_purge_1)
+
+	print("debug,shape of new_samples_purge_0")
+	print(purge_0_eigen.shape)
+
 	# new_samples_purge, sample_cnt_cluster = generate_new_samples_regu_eigen(clusters,num_new_samples_purge, results_orig_p_clustering, X, train_n, eigen_signal_overall)
 	# new_samples_purge_0 = new_samples_purge[0]
 	# new_samples_purge_1 = new_samples_purge[1]
 	#
-	# # convert to eigen space
+	# convert to eigen space
 	# new_samples_purge_0_eigen = np.real(np.dot(new_samples_purge_0,eigen_signal_overall))
 	# new_samples_purge_1_eigen = np.real(np.dot(new_samples_purge_1,eigen_signal_overall))
-	#
-	# # swap the oldest 10% syntheiszed data with the newly generated data
-	# new_samples_c0[0:sample_cnt_cluster[0],:] = new_samples_purge_0_eigen
-	# new_samples_c1[0:sample_cnt_cluster[1],:] = new_samples_purge_1_eigen
-	# print("debug, shape of new_samples_c0 before purge")
-	# print(new_samples_c0.shape)
-	# print("debug, shape of new_sample_purge_0_eigen")
-	# print(new_samples_purge_0_eigen.shape)
-	# print("debug, shape of new_samples_c0 after purger")
-	# print(new_samples_c0.shape)
+
+	# swap the oldest 10% syntheiszed data with the newly generated data
+	new_samples_c0[0:purge_0_eigen.shape[0],:] = purge_0_eigen
+	new_samples_c1[0:purge_1_eigen.shape[0],:] = purge_1_eigen
 
 	combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
 
 	for i in range(n_epochs):
 
-		# print('Pi_k at the beginning of %d iteration' % i)
-		# print('cluster0', clusters[0]['pi_k'])
-		# print('cluster1', clusters[1]['pi_k'])
 		clusters_snapshot = []
 
 		# This is just for our later use in the graphs
@@ -82,10 +90,9 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 		# 	                                                           train_n, eigen_signal_overall)
 		# generate 20% of total synthesized data
 		# num_new_samples_purge = round(0.2*num_new_samples)
-
 		#
-		print("debug, clusters[0]['mu_k']")
-		print(clusters[0]['mu_k'])
+		# print("debug, clusters[0]['mu_k']")
+		# print(clusters[0]['mu_k'])
 		expectation_step(combined_X, clusters, epsilon)
 		#
 		maximization_step(combined_X, clusters)
@@ -100,6 +107,15 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 
 	return clusters, likelihoods, sample_likelihoods, history, combined_X
 	# return clusters, likelihoods, sample_likelihoods, history
+
+
+def draw_samples_from_mvg(n_samples,cluster):
+		mu = cluster['mu_k']
+		sigma = cluster['cov_k']
+		new_samples = np.random.multivariate_normal(mu, sigma, n_samples)
+		# new_samples shape: n_samples * n_features
+
+		return new_samples
 
 #################
 # initialize clusters
@@ -473,8 +489,8 @@ def expectation_step(X, clusters, epsilon):
 		#         print(mu_k.shape)
 		#
 		gamma_nk = (pi_k * gaussian(total_X, mu_k, cov_k_modified)).reshape(total_X.shape[0], 1)
-		print("Debug: inside expectation_step: value of gamma_nk")
-		print(gamma_nk)
+		# print("Debug: inside expectation_step: value of gamma_nk")
+		# print(gamma_nk)
 
 		#         print("Debug: size of gamma_nk")
 		#         print(gamma_nk.shape)
