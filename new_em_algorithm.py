@@ -36,24 +36,24 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	history = []
 	#
 	print("finished initialization!!!")
-	num_new_samples_purge = round(0.1*num_new_samples)
-	print("number of new samples for purge: %d" % num_new_samples_purge)
-	# purge new samples to be generated from MVG mean and covariance given by maximization results
-	new_samples_list=[]
-	for i,cluster in enumerate(clusters):
-		# replace 20% of samples
-		n_samples = round(0.2*cluster['pi_k']*num_new_samples)
-		new_samples_per_cluster = draw_samples_from_mvg(n_samples,cluster)
-		new_samples_list.append(new_samples_per_cluster)
-
-	new_samples_purge_0 = new_samples_list[0]
-	new_samples_purge_1 = new_samples_list[1]
-
-	purge_0_eigen = np.real(new_samples_purge_0)
-	purge_1_eigen = np.real(new_samples_purge_1)
-
-	print("debug,shape of new_samples_purge_0")
-	print(purge_0_eigen.shape)
+	# num_new_samples_purge = round(0.1*num_new_samples)
+	# print("number of new samples for purge: %d" % num_new_samples_purge)
+	# # purge new samples to be generated from MVG mean and covariance given by maximization results
+	# new_samples_list=[]
+	# for i,cluster in enumerate(clusters):
+	# 	# replace 20% of samples
+	# 	n_samples = round(0.2*cluster['pi_k']*num_new_samples)
+	# 	new_samples_per_cluster = draw_samples_from_mvg(n_samples,cluster)
+	# 	new_samples_list.append(new_samples_per_cluster)
+	#
+	# new_samples_purge_0 = new_samples_list[0]
+	# new_samples_purge_1 = new_samples_list[1]
+	#
+	# purge_0_eigen = np.real(new_samples_purge_0)
+	# purge_1_eigen = np.real(new_samples_purge_1)
+	#
+	# print("debug,shape of new_samples_purge_0")
+	# print(purge_0_eigen.shape)
 
 	# new_samples_purge, sample_cnt_cluster = generate_new_samples_regu_eigen(clusters,num_new_samples_purge, results_orig_p_clustering, X, train_n, eigen_signal_overall)
 	# new_samples_purge_0 = new_samples_purge[0]
@@ -64,15 +64,13 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	# new_samples_purge_1_eigen = np.real(np.dot(new_samples_purge_1,eigen_signal_overall))
 
 	# swap the oldest 10% syntheiszed data with the newly generated data
-	new_samples_c0[0:purge_0_eigen.shape[0],:] = purge_0_eigen
-	new_samples_c1[0:purge_1_eigen.shape[0],:] = purge_1_eigen
-
-	combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
+	# new_samples_c0[0:purge_0_eigen.shape[0],:] = purge_0_eigen
+	# new_samples_c1[0:purge_1_eigen.shape[0],:] = purge_1_eigen
+	# #
+	# combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
 
 	for i in range(n_epochs):
-
 		clusters_snapshot = []
-
 		# This is just for our later use in the graphs
 		for cluster in clusters:
 			clusters_snapshot.append({
@@ -93,6 +91,36 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 		#
 		# print("debug, clusters[0]['mu_k']")
 		# print(clusters[0]['mu_k'])
+
+		# =================================================================
+		# add the step of updating synthesized data (purge the oldest data)
+		num_new_samples_purge = round(0.1 * num_new_samples)
+		print("number of new samples for purge: %d" % num_new_samples_purge)
+		# purge new samples to be generated from MVG mean and covariance given by maximization results
+		new_samples_list = []
+		for i, cluster in enumerate(clusters):
+			# replace 20% of samples
+			# n_samples = round(0.2 * cluster['pi_k'] * num_new_samples)
+			# temporarily use 5
+			n_samples=5
+			new_samples_per_cluster = draw_samples_from_mvg(n_samples, cluster)
+			new_samples_list.append(new_samples_per_cluster)
+
+		new_samples_purge_0 = new_samples_list[0]
+		new_samples_purge_1 = new_samples_list[1]
+
+		purge_0_eigen = np.real(new_samples_purge_0)
+		purge_1_eigen = np.real(new_samples_purge_1)
+
+		print("debug,shape of new_samples_purge_0")
+		print(purge_0_eigen.shape)
+
+		new_samples_c0[0:purge_0_eigen.shape[0], :] = purge_0_eigen
+		new_samples_c1[0:purge_1_eigen.shape[0], :] = purge_1_eigen
+		#
+		combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
+		# ==========================================
+
 		expectation_step(combined_X, clusters, epsilon)
 		#
 		maximization_step(combined_X, clusters)
