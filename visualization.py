@@ -55,6 +55,41 @@ def visualize(ts_neg_low_d, ts_pos_low_d, eigen_signal_overall, total_new_sample
 
 	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name)
 
+def visualize_two_cluster(ts_neg_low_d, ts_pos_low_d, total_new_samples_c0, total_new_samples_c1, file_name):
+	"""
+
+	:param ts_neg_low_d: original majority class in eigen signal space, n_samples * n_features
+	:param ts_pos_low_d: original minority class in eigen signal space, n_samples * n_features
+	:param total_new_samples_c0: EM new samples, n_samples * n_features
+	:param total_new_samples_c1: EM new samples, n_samples * n_features
+	:return:
+	"""
+	# majority class
+	x_neg=ts_neg_low_d[:,0]
+	y_neg=ts_neg_low_d[:,1]
+	# minority class
+	x_pos=ts_pos_low_d[:,0]
+	y_pos=ts_pos_low_d[:,1]
+	#
+	plt.plot(x_neg,y_neg,'k.')
+	plt.plot(x_pos,y_pos,'b+')
+	# plot the EM synthesized samples
+	# first convert the new samples in eigen signal space
+	#
+	em_c0_dim0 = total_new_samples_c0[:,0]
+	em_c0_dim1 = total_new_samples_c0[:,1]
+	#
+	em_c1_dim0 = total_new_samples_c1[:,0]
+	em_c1_dim1 = total_new_samples_c1[:,1]
+	#
+	# plt.plot(em_c0_dim0,em_c0_dim1,'y*',label='EM samples for cluster0')
+	# plt.plot(em_c1_dim0,em_c1_dim1,'p*',label='EM samples for cluster1')
+	plt.plot(em_c0_dim0,em_c0_dim1,'g*',label='C0')
+	plt.plot(em_c1_dim0,em_c1_dim1,'y*',label='C1')
+	# plt.legend()
+
+	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name)
+
 def visualize_one_cluster(ts_neg_low_d, ts_pos_low_d, eigen_signal_overall, total_new_samples_c0,file_name):
 	"""
 
@@ -190,6 +225,9 @@ if __name__ == "__main__":
 	#
 	# train_x_expanded, train_y_binary = workflow1.pre_process()
 	train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
+
+	#
+	visualize_two_cluster(neg_low_d_transposed, pos_low_d_transposed, new_samples_all_clusters[0], new_samples_all_clusters[1])
 	#
 	# test_x, test_y = workflow1.pre_process(test_data=True)
 	# # covert test data into eigen space
@@ -199,7 +237,7 @@ if __name__ == "__main__":
 	#
 	# #
 	# plot_ground_truth_plus_test(neg_low_d_transposed, pos_low_d_transposed, test_x_eigen_pos, test_x_eigen_neg, 'RackeSports_original_plus_test.png')
-	plot_ground_truth(neg_low_d_transposed, pos_low_d_transposed, 'phoneme_original_imbalance.png')
+	# plot_ground_truth(neg_low_d_transposed, pos_low_d_transposed, 'phoneme_original_imbalance.png')
 	#
 	# plot adasyn
 	# X_adasyn = workflow1.create_adasyn_samples(num_ADASYN=90,train_p=train_p,train_n=train_n)

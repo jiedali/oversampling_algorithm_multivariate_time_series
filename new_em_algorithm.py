@@ -27,20 +27,25 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	new_samples_all_clusters: a LIST of numpy array, each being the new samples for each cluster;
 	For each cluster, the numpy array has a shape of: n_samples * n_features
 	"""
-	clusters, results_orig_p_clustering, results_combined_clustering, new_samples_c0, new_samples_c1 = \
+	clusters, results_orig_p_clustering, results_combined_clustering, epoch0_new_samples_c0, epoch0_new_samples_c1 = \
 		initialize_clusters_with_gmm_results(X, n_clusters, train_n, eigen_signal_overall)
 	# return the clustering membership
 	# clustering_results = results
 	likelihoods = np.zeros((n_epochs,))
 	scores = np.zeros((X.shape[0], n_clusters))
 	history = []
-	new_samples_c0_epoch0=new_samples_c0
-	new_samples_c1_epoch0=new_samples_c1
+	epoch0_new_samples_static_c0 = np.copy(epoch0_new_samples_c0)
+	epoch0_new_samples_static_c1 = np.copy(epoch0_new_samples_c1)
+	#
+	new_samples_c0 = epoch0_new_samples_c0
+	new_samples_c1 = epoch0_new_samples_c1
 	#
 	print("finished initialization!!!")
 	print("shape of new_samples_c0 and new_samples_c1")
 	print(new_samples_c0.shape)
 	print(new_samples_c1.shape)
+	print("debug, the 1st row of C0 epoch0")
+	print(epoch0_new_samples_static_c0[0])
 	# num_new_samples_purge = round(0.1*num_new_samples)
 	# print("number of new samples for purge: %d" % num_new_samples_purge)
 	# # purge new samples to be generated from MVG mean and covariance given by maximization results
@@ -96,7 +101,6 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 		#
 		# print("debug, clusters[0]['mu_k']")
 		# print(clusters[0]['mu_k'])
-
 		# =================================================================
 		# add the step of updating synthesized data (purge the oldest data)
 		num_new_samples_purge = round(0.1 * num_new_samples)
@@ -120,12 +124,34 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 		# Jieda note: a FIFO structure, the new samples will be added to the last, and oldest samples will be shifted to left and removed
 		len_purge_c0 = purge_0_eigen.shape[0]
 		len_purge_c1 = purge_0_eigen.shape[0]
-
+		# print("debug, new_samples_c0 the first row and the 5th row before shift rows")
+		# print(new_samples_c0[0])
+		# print("debug, new_samples_c0 the 5th row before shift rows")
+		# print(new_samples_c0[5])
+		# print("debug, shape of new_samples_c0")
+		# print(new_samples_c0.shape)
 		# do this for c0
 		# Shift the old samples to the left by number of new purge samples:len_purge_c0
 		new_samples_c0[:-len_purge_c0] = new_samples_c0[len_purge_c0:]
+
+		# print("debug, new_samples_c0 the first row and the 5th row after shift rows")
+		# print(new_samples_c0[0])
+		# print("debug, new_samples_c0 the 5th row after shift rows")
+		# print(new_samples_c0[5])
+
 		# add the new samples to the end of the queue
 		new_samples_c0[-len_purge_c0:] = purge_0_eigen
+
+		# print("debug, after insering the -5 row should be the 1st row in the newly generated samples set")
+		# print(new_samples_c0[-len_purge_c0])
+		# print("debug, 1st in the new samples set")
+		# print(purge_0_eigen[0])
+		# print("debug, shape of new samples, make sure they match")
+		# print(purge_0_eigen.shape)
+		# print("shape of new_samples_c0")
+		# print(new_samples_c0.shape)
+
+
 
 		# Do this for c1
 		# Shift the old samples to the left by number of new purge samples:len_purge_c0
@@ -156,12 +182,18 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	new_samples_c0_last_epoch = new_samples_c0
 	new_samples_c1_last_epoch = new_samples_c1
 
+	print("debug last epoch c0 row 1")
+	print(new_samples_c0_last_epoch[0])
+
+	print("debug show first epoch c0 row 1")
+	print(epoch0_new_samples_static_c0[0])
+
 	total_new_samples_last_epoch=[]
 	total_new_samples_last_epoch.append(new_samples_c0_last_epoch)
 	total_new_samples_last_epoch.append(new_samples_c1_last_epoch)
 
 
-	return clusters, likelihoods, sample_likelihoods, history, total_new_samples_last_epoch, new_samples_c0_epoch0, new_samples_c1_epoch0, new_samples_c0_last_epoch, new_samples_c1_last_epoch
+	return clusters, likelihoods, sample_likelihoods, history, total_new_samples_last_epoch, epoch0_new_samples_static_c0, epoch0_new_samples_static_c1, new_samples_c0_last_epoch, new_samples_c1_last_epoch
 	# return clusters, likelihoods, sample_likelihoods, history
 
 
