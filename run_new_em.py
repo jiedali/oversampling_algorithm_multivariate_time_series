@@ -21,11 +21,21 @@ workflow1 = em_workflow(data_dir=data_dir, file_name_train=file_name_train, file
 # train_x_expanded, train_y_binary = workflow1.pre_process()
 train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
 #===================
+model_name = 'rf'
 n_clusters = 2
-n_epochs = 5
+n_epochs = 10
+adasyn_percentage=0.3
+#
 num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
-num_em_samples = num_new_samples_to_gen
-clusters, likelihoods, sample_likelihoods, history, new_samples_all_clusters = train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
+num_em_samples = round(num_new_samples_to_gen * (1 - adasyn_percentage))
+num_adasyn_samples = round(num_new_samples_to_gen * adasyn_percentage)
+#
+clusters, likelihoods, sample_likelihoods, history, new_samples_all_clusters,new_samples_c0_epoch0, new_samples_c1_epoch0, new_samples_c0_last_epoch, new_samples_c1_last_epoch= \
+	train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
 
-# clusters, results = \
-# 	train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
+# classification at last epoch
+f1_score, precision, recall = workflow1.workflow_70_inos(num_ADASYN=num_adasyn_samples, train_p=train_p, train_n=train_n,
+		                    new_samples_all_clusters=new_samples_all_clusters, remove_tomeklinks=False, model_name=model_name)
+
+# do classification with samples at epoch 0
+

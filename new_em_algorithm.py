@@ -34,8 +34,13 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	likelihoods = np.zeros((n_epochs,))
 	scores = np.zeros((X.shape[0], n_clusters))
 	history = []
+	new_samples_c0_epoch0=new_samples_c0
+	new_samples_c1_epoch0=new_samples_c1
 	#
 	print("finished initialization!!!")
+	print("shape of new_samples_c0 and new_samples_c1")
+	print(new_samples_c0.shape)
+	print(new_samples_c1.shape)
 	# num_new_samples_purge = round(0.1*num_new_samples)
 	# print("number of new samples for purge: %d" % num_new_samples_purge)
 	# # purge new samples to be generated from MVG mean and covariance given by maximization results
@@ -95,10 +100,10 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 		# =================================================================
 		# add the step of updating synthesized data (purge the oldest data)
 		num_new_samples_purge = round(0.1 * num_new_samples)
-		print("number of new samples for purge: %d" % num_new_samples_purge)
+		# print("number of new samples for purge: %d" % num_new_samples_purge)
 		# purge new samples to be generated from MVG mean and covariance given by maximization results
 		new_samples_list = []
-		for i, cluster in enumerate(clusters):
+		for j, cluster in enumerate(clusters):
 			# replace 20% of samples
 			# n_samples = round(0.2 * cluster['pi_k'] * num_new_samples)
 			# temporarily use 5
@@ -112,11 +117,24 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 		purge_0_eigen = np.real(new_samples_purge_0)
 		purge_1_eigen = np.real(new_samples_purge_1)
 
-		print("debug,shape of new_samples_purge_0")
-		print(purge_0_eigen.shape)
+		# Jieda note: a FIFO structure, the new samples will be added to the last, and oldest samples will be shifted to left and removed
+		len_purge_c0 = purge_0_eigen.shape[0]
+		len_purge_c1 = purge_0_eigen.shape[0]
 
-		new_samples_c0[0:purge_0_eigen.shape[0], :] = purge_0_eigen
-		new_samples_c1[0:purge_1_eigen.shape[0], :] = purge_1_eigen
+		# do this for c0
+		# Shift the old samples to the left by number of new purge samples:len_purge_c0
+		new_samples_c0[:-len_purge_c0] = new_samples_c0[len_purge_c0:]
+		# add the new samples to the end of the queue
+		new_samples_c0[-len_purge_c0:] = purge_0_eigen
+
+		# Do this for c1
+		# Shift the old samples to the left by number of new purge samples:len_purge_c0
+		new_samples_c1[:-len_purge_c1] = new_samples_c1[len_purge_c1:]
+		# add the new samples to the end of the queue
+		new_samples_c1[-len_purge_c1:] = purge_1_eigen
+
+		# new_samples_c0[0:purge_0_eigen.shape[0], :] = purge_0_eigen
+		# new_samples_c1[0:purge_1_eigen.shape[0], :] = purge_1_eigen
 		#
 		combined_X = np.vstack((X, new_samples_c0, new_samples_c1))
 		# ==========================================
@@ -133,7 +151,17 @@ def train_new_gmm(X, train_n, n_clusters, n_epochs, epsilon, num_new_samples, ei
 	# for i, cluster in enumerate(clusters):
 	# scores[:, i] = np.log(cluster['gamma_nk']).reshape(-1)
 
-	return clusters, likelihoods, sample_likelihoods, history, combined_X
+	# save the samples at last epoch
+
+	new_samples_c0_last_epoch = new_samples_c0
+	new_samples_c1_last_epoch = new_samples_c1
+
+	total_new_samples_last_epoch=[]
+	total_new_samples_last_epoch.append(new_samples_c0_last_epoch)
+	total_new_samples_last_epoch.append(new_samples_c1_last_epoch)
+
+
+	return clusters, likelihoods, sample_likelihoods, history, total_new_samples_last_epoch, new_samples_c0_epoch0, new_samples_c1_epoch0, new_samples_c0_last_epoch, new_samples_c1_last_epoch
 	# return clusters, likelihoods, sample_likelihoods, history
 
 
