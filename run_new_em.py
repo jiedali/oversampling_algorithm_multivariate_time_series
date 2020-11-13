@@ -25,7 +25,7 @@ train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = wor
 #===================
 model_name = 'rf'
 n_clusters = 2
-n_epochs = 1
+
 adasyn_percentage=0
 #
 num_new_samples_to_gen = train_n.shape[1] - train_p.shape[1]
@@ -40,52 +40,55 @@ first_epoch_precision=[]
 last_epoch_precision=[]
 
 results_df = pd.DataFrame()
-for i in range(0,10):
-	clusters, likelihoods, sample_likelihoods, history, new_samples_all_clusters,new_samples_c0_epoch0, new_samples_c1_epoch0, new_samples_c0_last_epoch, new_samples_c1_last_epoch=train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
-	# First report last epoch run result:
-	# Code for doing end epoch sample
-	# Temp: convert new_samples_all_clusters to original feature space
-	new_samples_last_epoch=[]
-	#
-	new_samples_last_epoch_c0 = np.real(np.dot(new_samples_all_clusters[0],eigen_signal.transpose()))
-	new_samples_last_epoch_c1 = np.real(np.dot(new_samples_all_clusters[1],eigen_signal.transpose()))
+for n_epochs in [10]:
+	first_epoch_f1 = []
+	last_epoch_f1 = []
+	for i in [0]:
+		clusters, likelihoods, sample_likelihoods, history, new_samples_all_clusters,new_samples_c0_epoch0, new_samples_c1_epoch0, new_samples_c0_last_epoch, new_samples_c1_last_epoch=train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
+		# First report last epoch run result:
+		# Code for doing end epoch sample
+		# Temp: convert new_samples_all_clusters to original feature space
+		new_samples_last_epoch=[]
+		#
+		new_samples_last_epoch_c0 = np.real(np.dot(new_samples_all_clusters[0],eigen_signal.transpose()))
+		new_samples_last_epoch_c1 = np.real(np.dot(new_samples_all_clusters[1],eigen_signal.transpose()))
 
-	new_samples_last_epoch.append(new_samples_last_epoch_c0)
-	new_samples_last_epoch.append(new_samples_last_epoch_c1)
+		new_samples_last_epoch.append(new_samples_last_epoch_c0)
+		new_samples_last_epoch.append(new_samples_last_epoch_c1)
 
-	print("Last Epoch results:")
-	last_f1_score, last_precision, last_recall = workflow1.workflow_70_inos(num_ADASYN=num_adasyn_samples, train_p=train_p, train_n=train_n,
-			                    new_samples_all_clusters=new_samples_last_epoch, remove_tomeklinks=False, model_name=model_name)
-	last_epoch_f1.append(last_f1_score)
-	last_epoch_precision.append(last_precision)
-	last_epoch_recall.append(last_recall)
-	# Now report result with epoch 0
-	# Temp: convert new_samples_all_clusters to original feature space
-	new_samples_epoch_0=[]
+		# print("Last Epoch results:")
+		last_f1_score, last_precision, last_recall = workflow1.workflow_70_inos(num_ADASYN=num_adasyn_samples, train_p=train_p, train_n=train_n,
+				                    new_samples_all_clusters=new_samples_last_epoch, remove_tomeklinks=False, model_name=model_name)
+		last_epoch_f1.append(last_f1_score)
+		last_epoch_precision.append(last_precision)
+		last_epoch_recall.append(last_recall)
+		# Now report result with epoch 0
+		# Temp: convert new_samples_all_clusters to original feature space
+		new_samples_epoch_0=[]
 
-	new_samples_epoch0_c0 = np.real(np.dot(new_samples_c0_epoch0,eigen_signal.transpose()))
-	new_samples_epoch0_c1 = np.real(np.dot(new_samples_c1_epoch0,eigen_signal.transpose()))
+		new_samples_epoch0_c0 = np.real(np.dot(new_samples_c0_epoch0,eigen_signal.transpose()))
+		new_samples_epoch0_c1 = np.real(np.dot(new_samples_c1_epoch0,eigen_signal.transpose()))
 
-	new_samples_epoch_0.append(new_samples_epoch0_c0)
-	new_samples_epoch_0.append(new_samples_epoch0_c1)
+		new_samples_epoch_0.append(new_samples_epoch0_c0)
+		new_samples_epoch_0.append(new_samples_epoch0_c1)
 
-	# print("shape of converted new_samples")
-	# print(new_samples_per_cluster_ori_c0.shape)
+		# print("shape of converted new_samples")
+		# print(new_samples_per_cluster_ori_c0.shape)
 
-	# classification at last epoch
-	print("Epoch 0 results:")
-	first_f1_score, first_precision, first_recall = workflow1.workflow_70_inos(num_ADASYN=num_adasyn_samples, train_p=train_p, train_n=train_n,
-			                    new_samples_all_clusters=new_samples_epoch_0, remove_tomeklinks=False, model_name=model_name)
-	first_epoch_f1.append(first_f1_score)
-	first_epoch_precision.append(first_precision)
-	first_epoch_recall.append(first_recall)
-	# do classification with samples at epoch 0
+		# classification at last epoch
+		# print("Epoch 0 results:")
+		first_f1_score, first_precision, first_recall = workflow1.workflow_70_inos(num_ADASYN=num_adasyn_samples, train_p=train_p, train_n=train_n,
+				                    new_samples_all_clusters=new_samples_epoch_0, remove_tomeklinks=False, model_name=model_name)
+		first_epoch_f1.append(first_f1_score)
+		first_epoch_precision.append(first_precision)
+		first_epoch_recall.append(first_recall)
+		# do classification with samples at epoch 0
 
-results_df['first_epoch']=first_epoch_f1
-results_df['last_epoch']=last_epoch_f1
-results_df['first_epoch_recall']=first_epoch_recall
-results_df['last_epoch_recall']=last_epoch_recall
-results_df['first_epoch_precision']=first_epoch_precision
-results_df['last_epoch_precision']= last_epoch_precision
+	results_df['First_epoch_'+str(n_epochs)]=first_epoch_f1
+	results_df['epoch_'+str(n_epochs)]=last_epoch_f1
+	# results_df['first_epoch_recall']=first_epoch_recall
+	# results_df['last_epoch_recall']=last_epoch_recall
+	# results_df['first_epoch_precision']=first_epoch_precision
+	# results_df['last_epoch_precision']= last_epoch_precision
 
-results_df.to_csv('./em_comprison_epoch1.csv')
+results_df.to_csv('./junk.csv',mode='a')

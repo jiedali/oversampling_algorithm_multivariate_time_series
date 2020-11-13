@@ -55,7 +55,7 @@ def visualize(ts_neg_low_d, ts_pos_low_d, eigen_signal_overall, total_new_sample
 
 	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name)
 
-def visualize_two_cluster(ts_neg_low_d, ts_pos_low_d, total_new_samples_c0, total_new_samples_c1, file_name):
+def visualize_two_cluster(ts_neg_low_d, ts_pos_low_d, total_new_samples_c0, total_new_samples_c1, file_name, plot_title):
 	"""
 
 	:param ts_neg_low_d: original majority class in eigen signal space, n_samples * n_features
@@ -64,6 +64,7 @@ def visualize_two_cluster(ts_neg_low_d, ts_pos_low_d, total_new_samples_c0, tota
 	:param total_new_samples_c1: EM new samples, n_samples * n_features
 	:return:
 	"""
+	plt.figure()
 	# majority class
 	x_neg=ts_neg_low_d[:,0]
 	y_neg=ts_neg_low_d[:,1]
@@ -87,7 +88,7 @@ def visualize_two_cluster(ts_neg_low_d, ts_pos_low_d, total_new_samples_c0, tota
 	plt.plot(em_c0_dim0,em_c0_dim1,'g*',label='C0')
 	plt.plot(em_c1_dim0,em_c1_dim1,'y*',label='C1')
 	# plt.legend()
-
+	plt.title(plot_title)
 	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name)
 
 def visualize_one_cluster(ts_neg_low_d, ts_pos_low_d, eigen_signal_overall, total_new_samples_c0,file_name):
