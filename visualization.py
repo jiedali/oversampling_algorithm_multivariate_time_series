@@ -1,10 +1,10 @@
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import constants as const
 from em_workflow import em_workflow
 from em_algorithm import train_gmm
 
-import matplotlib as mpl
 from cycler import cycler
 
 # Update matplotlib defaults to something nicer
@@ -123,6 +123,14 @@ def visualize_one_cluster(ts_neg_low_d, ts_pos_low_d, eigen_signal_overall, tota
 	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name)
 
 def plot_ground_truth(ts_neg_low_d, ts_pos_low_d, file_name):
+	mpl.rc('font', family='serif')
+	font = {'family': 'serif',
+	        'color': 'black',
+	        'weight': 'normal',
+	        'size': 17,
+	        }
+
+
 	# majority class
 	x_neg=ts_neg_low_d[:,0]
 	y_neg=ts_neg_low_d[:,1]
@@ -130,15 +138,40 @@ def plot_ground_truth(ts_neg_low_d, ts_pos_low_d, file_name):
 	x_pos=ts_pos_low_d[:,0]
 	y_pos=ts_pos_low_d[:,1]
 	#
-	plt.plot(x_neg,y_neg,'k.', label='Majority Class')
-	plt.plot(x_pos,y_pos,'b+', label='Minority Class')
+	plt.figure()
+	plt.plot(x_neg,y_neg,'k.', label='Majority')
+	plt.plot(x_pos,y_pos,'b+', label='Minority')
 	# plt.ylim([None,1250])
 	# plt.xlim([-3000,4000])
 	plt.legend()
 
-	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name)
+	# turn off tick marks
+	plt.tick_params(
+		axis='both',  # changes apply to the x-axis
+		which='both',  # both major and minor ticks are affected
+		bottom=False,  # ticks along the bottom edge are off
+		top=False,  # ticks along the top edge are off
+		labelbottom=False,
+		left = False,
+		labelleft=False)
+
+
+	# labels along the bottom edge are off
+
+	# plt.text(  # position text relative to Figure
+	# 	0.0, 1.0, 'RacketSports',
+	# 	ha='left', va='top',
+	# )
+	plt.title('Uni-Modal Gaussian', fontdict=font)
+
+	plt.gca().xaxis.set_major_locator(plt.NullLocator())
+	plt.gca().yaxis.set_major_locator(plt.NullLocator())
+	plt.savefig('/Users/jiedali/Documents/research/notes/plots/'+ file_name, bbox_inches='tight',pad_inches=0.1)
+
+
 
 def plot_ground_truth_plus_test(ts_neg_low_d, ts_pos_low_d, test_pos, test_neg,file_name):
+
 	# majority class
 	x_neg=ts_neg_low_d[:,0]
 	y_neg=ts_neg_low_d[:,1]
@@ -227,7 +260,7 @@ if __name__ == "__main__":
 	train_p, train_n, eigen_signal, pos_low_d_transposed, neg_low_d_transposed = workflow1.raw_data_to_eigen_signal_space()
 
 	#
-	visualize_two_cluster(neg_low_d_transposed, pos_low_d_transposed, new_samples_all_clusters[0], new_samples_all_clusters[1])
+	# visualize_two_cluster(neg_low_d_transposed, pos_low_d_transposed, new_samples_all_clusters[0], new_samples_all_clusters[1])
 	#
 	# test_x, test_y = workflow1.pre_process(test_data=True)
 	# # covert test data into eigen space
@@ -237,7 +270,8 @@ if __name__ == "__main__":
 	#
 	# #
 	# plot_ground_truth_plus_test(neg_low_d_transposed, pos_low_d_transposed, test_x_eigen_pos, test_x_eigen_neg, 'RackeSports_original_plus_test.png')
-	# plot_ground_truth(neg_low_d_transposed, pos_low_d_transposed, 'phoneme_original_imbalance.png')
+	plot_ground_truth(neg_low_d_transposed, pos_low_d_transposed, 'RacketSports_try1.png')
+	#
 	#
 	# plot adasyn
 	# X_adasyn = workflow1.create_adasyn_samples(num_ADASYN=90,train_p=train_p,train_n=train_n)

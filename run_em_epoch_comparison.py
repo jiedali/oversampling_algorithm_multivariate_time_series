@@ -40,7 +40,7 @@ first_epoch_precision=[]
 last_epoch_precision=[]
 
 results_df = pd.DataFrame()
-for i in range(0,10):
+for i in range(0,5):
 	clusters, likelihoods, sample_likelihoods, history, new_samples_all_clusters,new_samples_c0_epoch0, new_samples_c1_epoch0, new_samples_c0_last_epoch, new_samples_c1_last_epoch=train_new_gmm(pos_low_d_transposed, neg_low_d_transposed, n_clusters, n_epochs, 0.01, num_em_samples, eigen_signal)
 	# First report last epoch run result:
 	# Code for doing end epoch sample
@@ -88,4 +88,4 @@ results_df['last_epoch_recall']=last_epoch_recall
 results_df['first_epoch_precision']=first_epoch_precision
 results_df['last_epoch_precision']= last_epoch_precision
 
-results_df.to_csv('./em_comprison_epoch1.csv')
+results_df.to_csv('./em_comprison_epoch1_UWava.csv')
